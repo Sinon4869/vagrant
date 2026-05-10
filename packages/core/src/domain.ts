@@ -151,6 +151,30 @@ export interface Approval {
   decidedAt: string | null;
 }
 
+export interface DecideApprovalInput {
+  decision: Extract<ApprovalStatus, "approved" | "rejected">;
+  decidedBy: string;
+  decisionNote?: string | null;
+  now?: string;
+}
+
+export function decideApproval(approval: Approval, input: DecideApprovalInput): Approval {
+  if (approval.status !== "pending") {
+    throw new Error("Only pending approvals can be decided");
+  }
+
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    ...approval,
+    status: input.decision,
+    decidedBy: input.decidedBy,
+    decisionNote: input.decisionNote ?? null,
+    decidedAt: now,
+    updatedAt: now
+  };
+}
+
 export interface CreateIssueInput {
   id: string;
   projectId: string;

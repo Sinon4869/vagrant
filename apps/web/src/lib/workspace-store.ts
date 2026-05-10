@@ -10,6 +10,7 @@ import {
   AgentRole,
   RuntimeKind,
   IssueStatus,
+  decideApproval,
   type Issue,
   type KnowledgePage,
   type NotificationItem,
@@ -114,12 +115,25 @@ export interface EmailOutboxRow {
   sentAt: string | null;
 }
 
+export interface ApprovalRow {
+  id: string;
+  rootIssueId: string;
+  issueId: string | null;
+  target: string;
+  status: string;
+  risk: string;
+  reason: string;
+  requestedBy: string;
+  updatedAt: string;
+}
+
 export interface InboxWorkspaceView {
   project: {
     id: string;
     name: string;
   };
   inbox: InboxRow[];
+  approvals: ApprovalRow[];
   emailOutbox: EmailOutboxRow[];
 }
 
@@ -326,6 +340,7 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
 
   const rootIssues = await store.listRootIssues(project.id);
   const notifications = await store.listNotifications(project.id);
+  const approvals = await store.listApprovals(project.id);
   const existingOutbox = await store.listEmailOutbox(project.id);
   const emailPlans = planEmailNotifications({
     projectId: project.id,
@@ -355,6 +370,20 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
       name: project.name
     },
     inbox: notifications.map((notification) => toInboxRow(notification, rootIssues)),
+    approvals: approvals.map((approval) => {
+      const issue = approval.issueId ? findIssueById(rootIssues, approval.issueId) : null;
+      return {
+        id: approval.id,
+        rootIssueId: approval.rootIssueId,
+        issueId: approval.issueId,
+        target: issue?.title ?? approval.issueId ?? approval.rootIssueId,
+        status: approval.status,
+        risk: approval.risk,
+        reason: approval.reason,
+        requestedBy: approval.requestedBy ? agentRoleLabel(approval.requestedBy) : "System",
+        updatedAt: formatDateTime(approval.updatedAt)
+      };
+    }),
     emailOutbox: emailOutbox.map((item) => ({
       id: item.id,
       subject: item.subject,
@@ -365,6 +394,30 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
       sentAt: item.sentAt ? formatDateTime(item.sentAt) : null
     }))
   };
+}
+
+export async function decideProjectApproval({
+  projectId = DEFAULT_PROJECT_ID,
+  approvalId,
+  decision
+}: {
+  projectId?: string;
+  approvalId: string;
+  decision: "approved" | "rejected";
+}): Promise<void> {
+  const store = await getWorkspaceStore();
+  const resolvedProjectId = resolveProjectId(projectId);
+  const approvals = await store.listApprovals(resolvedProjectId);
+  const approval = approvals.find((item) => item.id === approvalId);
+
+  if (!approval) {
+    throw new Error(`Approval not found: ${approvalId}`);
+  }
+
+  await store.upsertApproval(decideApproval(approval, {
+    decision,
+    decidedBy: "local-operator"
+  }));
 }
 
 export async function sendProjectEmailOutbox(projectId = DEFAULT_PROJECT_ID): Promise<void> {
