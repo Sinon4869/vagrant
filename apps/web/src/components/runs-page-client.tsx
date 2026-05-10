@@ -39,7 +39,7 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
       <PageHeader
         eyebrow={`Project ${view.project.name}`}
         title="Runs"
-        description="Dispatch a ready subissue with the mock runtime, then inspect the persisted agent run history."
+        description="Dispatch a ready subissue with mock, Codex CLI, or Claude CLI, then inspect the persisted agent run history."
       />
 
       <Card title="Dispatch ready issue" extra={<PlayCircleOutlined />}>
@@ -53,8 +53,25 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
               }))}
             />
           </Form.Item>
+          <Form.Item label="Repository" name="repositoryId" initialValue={view.repositories[0]?.id} rules={[{ required: true }]}>
+            <Select
+              options={view.repositories.map((repository) => ({
+                label: repository.name,
+                value: repository.id
+              }))}
+            />
+          </Form.Item>
+          <Form.Item label="Runtime" name="runtimeKind" initialValue="mock" rules={[{ required: true }]}>
+            <Select
+              options={[
+                { label: "Mock Runtime", value: "mock" },
+                { label: "Codex CLI", value: "codex_cli" },
+                { label: "Claude CLI", value: "claude_cli" }
+              ]}
+            />
+          </Form.Item>
           <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />}>
-            Dispatch mock run
+            Dispatch run
           </Button>
         </Form>
       </Card>

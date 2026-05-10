@@ -83,6 +83,7 @@ export interface RunsWorkspaceView {
     name: string;
   };
   requirements: RequirementRow[];
+  repositories: RepositoryRow[];
   runs: RunRow[];
 }
 
@@ -247,6 +248,7 @@ export async function getRunsWorkspaceView(projectId = DEFAULT_PROJECT_ID): Prom
       name: project.name
     },
     requirements: rootIssues.map((issue) => toRequirementRow(issue, repositories)),
+    repositories: repositories.map((repository) => toRepositoryRow(repository, rootIssues.length)),
     runs: runs.map((run) => toRunRow(run, rootIssues, repositories))
   };
 }
