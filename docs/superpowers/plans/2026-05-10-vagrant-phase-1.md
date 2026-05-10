@@ -6,7 +6,7 @@
 
 **Architecture:** Use a TypeScript pnpm monorepo. `packages/core` contains pure domain, planner, dispatcher, notification, and mock adapter logic with Vitest coverage. `apps/web` is a Next.js App Router UI that consumes seeded in-memory data from core so the first phase is runnable before real persistence, CLI runtimes, and provider sync are added.
 
-**Tech Stack:** TypeScript, pnpm workspaces, Vitest, Next.js App Router, React, Tailwind CSS, ESLint.
+**Tech Stack:** TypeScript, pnpm workspaces, Vitest, Next.js App Router, React, Ant Design, ESLint.
 
 ---
 
@@ -49,8 +49,6 @@ Create these files:
 - `apps/web/package.json`: web package scripts and dependencies.
 - `apps/web/next.config.mjs`: Next config.
 - `apps/web/tsconfig.json`: web TypeScript config.
-- `apps/web/postcss.config.mjs`: PostCSS config.
-- `apps/web/tailwind.config.ts`: Tailwind config.
 - `apps/web/src/app/globals.css`: base styles.
 - `apps/web/src/app/layout.tsx`: app shell metadata.
 - `apps/web/src/app/page.tsx`: project dashboard.
@@ -579,7 +577,7 @@ Expected: FAIL because `issue-tree.ts` does not exist.
 Write `packages/core/src/issue-tree.ts`:
 
 ```ts
-import { Issue, IssueStatus } from "./domain";
+import { Issue, IssueStatus } from "./domain.js";
 
 export interface IssueTreeCounts {
   todo: number;
@@ -655,8 +653,8 @@ function chooseAggregateStatus(counts: IssueTreeCounts, total: number): IssueSta
 Update `packages/core/src/index.ts`:
 
 ```ts
-export * from "./domain";
-export * from "./issue-tree";
+export * from "./domain.js";
+export * from "./issue-tree.js";
 ```
 
 - [ ] **Step 4: Run tests and typecheck**
@@ -752,7 +750,7 @@ Expected: FAIL because `rule-planner.ts` does not exist.
 Write `packages/core/src/rule-planner.ts`:
 
 ```ts
-import { AgentRole, createIssue, Issue, IssueType } from "./domain";
+import { AgentRole, createIssue, Issue, IssueType } from "./domain.js";
 
 export type RequirementComplexity = "small" | "medium" | "large";
 export type RequirementArea = "frontend" | "backend" | "full_stack" | "devops" | "documentation";
@@ -936,9 +934,9 @@ function documentationTemplate(): ChildTemplate {
 Update `packages/core/src/index.ts`:
 
 ```ts
-export * from "./domain";
-export * from "./issue-tree";
-export * from "./rule-planner";
+export * from "./domain.js";
+export * from "./issue-tree.js";
+export * from "./rule-planner.js";
 ```
 
 - [ ] **Step 4: Run tests and typecheck**
@@ -1051,7 +1049,7 @@ Expected: FAIL because `dispatcher.ts` and `adapters.ts` do not exist.
 Write `packages/core/src/adapters.ts`:
 
 ```ts
-import { Evidence, Issue } from "./domain";
+import { Evidence, Issue } from "./domain.js";
 
 export interface AgentRunInput {
   runId: string;
@@ -1107,8 +1105,8 @@ export class MockProviderAdapter implements ProviderAdapter {
 Write `packages/core/src/dispatcher.ts`:
 
 ```ts
-import { RuntimeAdapter, ProviderAdapter } from "./adapters";
-import { Issue, IssueStatus } from "./domain";
+import { RuntimeAdapter, ProviderAdapter } from "./adapters.js";
+import { Issue, IssueStatus } from "./domain.js";
 
 export interface DispatchReadyIssuesInput {
   root: Issue;
@@ -1200,11 +1198,11 @@ async function mapIssueTree(issue: Issue, mapper: (issue: Issue) => Promise<Issu
 Update `packages/core/src/index.ts`:
 
 ```ts
-export * from "./domain";
-export * from "./issue-tree";
-export * from "./rule-planner";
-export * from "./adapters";
-export * from "./dispatcher";
+export * from "./domain.js";
+export * from "./issue-tree.js";
+export * from "./rule-planner.js";
+export * from "./adapters.js";
+export * from "./dispatcher.js";
 ```
 
 - [ ] **Step 5: Run tests and typecheck**
@@ -1340,8 +1338,8 @@ export function createNotificationDecision(input: NotificationDecisionInput): No
 Write `packages/core/src/seed.ts`:
 
 ```ts
-import { aggregateIssueTree } from "./issue-tree";
-import { planIssueTree } from "./rule-planner";
+import { aggregateIssueTree } from "./issue-tree.js";
+import { planIssueTree } from "./rule-planner.js";
 
 export function createDemoProject() {
   const rootIssue = planIssueTree({
@@ -1376,13 +1374,13 @@ export function createDemoProject() {
 Update `packages/core/src/index.ts`:
 
 ```ts
-export * from "./domain";
-export * from "./issue-tree";
-export * from "./rule-planner";
-export * from "./adapters";
-export * from "./dispatcher";
-export * from "./notifications";
-export * from "./seed";
+export * from "./domain.js";
+export * from "./issue-tree.js";
+export * from "./rule-planner.js";
+export * from "./adapters.js";
+export * from "./dispatcher.js";
+export * from "./notifications.js";
+export * from "./seed.js";
 ```
 
 - [ ] **Step 5: Run tests and typecheck**
@@ -1405,14 +1403,12 @@ git commit -m "feat: add notification dedupe and demo seed"
 
 ---
 
-### Task 7: Bootstrap Next.js Web App
+### Task 7: Bootstrap Next.js Web App With Ant Design
 
 **Files:**
 - Create: `apps/web/package.json`
 - Create: `apps/web/next.config.mjs`
 - Create: `apps/web/tsconfig.json`
-- Create: `apps/web/postcss.config.mjs`
-- Create: `apps/web/tailwind.config.ts`
 - Create: `apps/web/src/app/globals.css`
 - Create: `apps/web/src/app/layout.tsx`
 - Create: `apps/web/src/components/app-shell.tsx`
@@ -1437,6 +1433,9 @@ Write `apps/web/package.json`:
   },
   "dependencies": {
     "@vagrant/core": "workspace:*",
+    "@ant-design/nextjs-registry": "^1.0.2",
+    "@ant-design/icons": "^5.5.2",
+    "antd": "^5.22.5",
     "next": "^15.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -1445,11 +1444,8 @@ Write `apps/web/package.json`:
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
-    "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.0.4",
-    "postcss": "^8.4.49",
-    "tailwindcss": "^3.4.16",
     "vitest": "^2.1.8"
   }
 }
@@ -1486,51 +1482,11 @@ Write `apps/web/tsconfig.json`:
 }
 ```
 
-Write `apps/web/postcss.config.mjs`:
-
-```js
-const config = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {}
-  }
-};
-
-export default config;
-```
-
-Write `apps/web/tailwind.config.ts`:
-
-```ts
-import type { Config } from "tailwindcss";
-
-const config: Config = {
-  content: ["./src/**/*.{ts,tsx}"],
-  theme: {
-    extend: {
-      colors: {
-        surface: "#f7f8fa",
-        ink: "#171717",
-        muted: "#6b7280",
-        line: "#d9dde3"
-      }
-    }
-  },
-  plugins: []
-};
-
-export default config;
-```
-
 - [ ] **Step 2: Add app shell and base styles**
 
 Write `apps/web/src/app/globals.css`:
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   color-scheme: light;
   background: #f7f8fa;
@@ -1553,12 +1509,58 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.app-shell {
+  min-height: 100vh;
+  background: #f7f8fa;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 56px;
+  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #d9dde3;
+}
+
+.brand-link {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.top-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.app-content {
+  width: min(1280px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.issue-tree-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
 ```
 
 Write `apps/web/src/app/layout.tsx`:
 
 ```tsx
 import type { Metadata } from "next";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 
@@ -1571,7 +1573,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <AppShell>{children}</AppShell>
+        <AntdRegistry>
+          <AppShell>{children}</AppShell>
+        </AntdRegistry>
       </body>
     </html>
   );
@@ -1582,28 +1586,29 @@ Write `apps/web/src/components/app-shell.tsx`:
 
 ```tsx
 import Link from "next/link";
+import { Layout, Menu, Typography } from "antd";
+
+const { Header, Content } = Layout;
+const { Text } = Typography;
 
 const navItems = ["Projects", "Issues", "Agents", "Runs", "Wiki", "Providers", "Notifications", "Settings"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-line bg-white">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="text-sm font-semibold tracking-normal text-ink">
-            Vagrant
-          </Link>
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => (
-              <span key={item} className="rounded px-2.5 py-1.5 text-xs font-medium text-muted">
-                {item}
-              </span>
-            ))}
-          </nav>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
-    </div>
+    <Layout className="app-shell">
+      <Header className="app-header">
+        <Link href="/" className="brand-link">
+          Vagrant
+        </Link>
+        <Menu
+          mode="horizontal"
+          selectable={false}
+          className="top-nav"
+          items={navItems.map((item) => ({ key: item, label: <Text type="secondary">{item}</Text> }))}
+        />
+      </Header>
+      <Content className="app-content">{children}</Content>
+    </Layout>
   );
 }
 ```
@@ -1612,22 +1617,19 @@ Write `apps/web/src/components/status-badge.tsx`:
 
 ```tsx
 import { IssueStatus } from "@vagrant/core";
+import { Tag } from "antd";
 
-const styles: Record<IssueStatus, string> = {
-  [IssueStatus.Todo]: "border-line bg-white text-muted",
-  [IssueStatus.InProgress]: "border-blue-200 bg-blue-50 text-blue-700",
-  [IssueStatus.Blocked]: "border-red-200 bg-red-50 text-red-700",
-  [IssueStatus.InReview]: "border-amber-200 bg-amber-50 text-amber-700",
-  [IssueStatus.Done]: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  [IssueStatus.Cancelled]: "border-zinc-200 bg-zinc-100 text-zinc-500"
+const colors: Record<IssueStatus, string> = {
+  [IssueStatus.Todo]: "default",
+  [IssueStatus.InProgress]: "processing",
+  [IssueStatus.Blocked]: "error",
+  [IssueStatus.InReview]: "warning",
+  [IssueStatus.Done]: "success",
+  [IssueStatus.Cancelled]: "default"
 };
 
 export function StatusBadge({ status }: { status: IssueStatus }) {
-  return (
-    <span className={`inline-flex rounded border px-2 py-0.5 text-xs font-medium ${styles[status]}`}>
-      {status.replace("_", " ")}
-    </span>
-  );
+  return <Tag color={colors[status]}>{status.replace("_", " ")}</Tag>;
 }
 ```
 
@@ -1701,6 +1703,10 @@ export function getDemoData() {
 Write `apps/web/src/components/attention-panel.tsx`:
 
 ```tsx
+import { Card, List, Typography } from "antd";
+
+const { Text, Title } = Typography;
+
 interface AttentionItem {
   id: string;
   type: string;
@@ -1710,20 +1716,25 @@ interface AttentionItem {
 
 export function AttentionPanel({ items }: { items: AttentionItem[] }) {
   return (
-    <section className="rounded border border-line bg-white">
-      <div className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Current Attention</h2>
-      </div>
-      <div className="divide-y divide-line">
-        {items.map((item) => (
-          <article key={item.id} className="px-4 py-3">
-            <div className="text-xs font-medium uppercase text-muted">{item.type}</div>
-            <h3 className="mt-1 text-sm font-medium text-ink">{item.title}</h3>
-            <p className="mt-1 text-sm text-muted">{item.body}</p>
-          </article>
-        ))}
-      </div>
-    </section>
+    <Card title="Current Attention" size="small">
+      <List
+        dataSource={items}
+        renderItem={(item) => (
+          <List.Item>
+            <List.Item.Meta
+              title={<Title level={5}>{item.title}</Title>}
+              description={
+                <>
+                  <Text type="secondary">{item.type}</Text>
+                  <br />
+                  <Text type="secondary">{item.body}</Text>
+                </>
+              }
+            />
+          </List.Item>
+        )}
+      />
+    </Card>
   );
 }
 ```
@@ -1734,60 +1745,67 @@ Write `apps/web/src/app/page.tsx`:
 
 ```tsx
 import Link from "next/link";
+import { Card, Col, Flex, Progress, Row, Space, Statistic, Typography } from "antd";
 import { AttentionPanel } from "@/components/attention-panel";
 import { StatusBadge } from "@/components/status-badge";
 import { getDemoData } from "@/lib/demo-data";
+
+const { Paragraph, Text, Title } = Typography;
 
 export default function DashboardPage() {
   const { project, rootIssue, summary, attentionItems } = getDemoData();
 
   return (
-    <div className="space-y-6">
-      <section className="flex items-start justify-between gap-6">
+    <Space direction="vertical" size={24} style={{ width: "100%" }}>
+      <Flex align="flex-start" justify="space-between" gap={24}>
         <div>
-          <p className="text-xs font-medium uppercase text-muted">Project</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ink">{project.name}</h1>
-          <p className="mt-2 text-sm text-muted">{project.repositoryUrl}</p>
+          <Text type="secondary">Project</Text>
+          <Title level={2} style={{ margin: "4px 0 8px" }}>{project.name}</Title>
+          <Paragraph type="secondary" style={{ margin: 0 }}>{project.repositoryUrl}</Paragraph>
         </div>
         <StatusBadge status={summary.aggregateStatus} />
-      </section>
+      </Flex>
 
-      <section className="grid gap-3 md:grid-cols-5">
+      <Row gutter={[12, 12]}>
         <Metric label="Total issues" value={summary.total} />
         <Metric label="Done" value={summary.counts.done} />
         <Metric label="In progress" value={summary.counts.in_progress} />
         <Metric label="In review" value={summary.counts.in_review} />
         <Metric label="Blocked" value={summary.counts.blocked} />
-      </section>
+      </Row>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <section className="rounded border border-line bg-white">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
-            <h2 className="text-sm font-semibold text-ink">Active Root Issues</h2>
-            <span className="text-xs text-muted">{summary.progress}% complete</span>
-          </div>
-          <Link href={`/issues/${rootIssue.id}`} className="block px-4 py-4 hover:bg-surface">
-            <div className="flex items-center justify-between gap-4">
+      <Row gutter={[24, 24]} align="stretch">
+        <Col xs={24} lg={16}>
+          <Card
+            title="Active Root Issues"
+            extra={<Progress type="circle" percent={summary.progress} size={40} />}
+          >
+            <Link href={`/issues/${rootIssue.id}`}>
+              <Flex align="center" justify="space-between" gap={16}>
               <div>
-                <h3 className="text-sm font-medium text-ink">{rootIssue.title}</h3>
-                <p className="mt-1 text-sm text-muted">{rootIssue.description}</p>
+                  <Title level={4} style={{ marginTop: 0 }}>{rootIssue.title}</Title>
+                  <Paragraph type="secondary" style={{ marginBottom: 0 }}>{rootIssue.description}</Paragraph>
               </div>
               <StatusBadge status={summary.aggregateStatus} />
-            </div>
+              </Flex>
           </Link>
-        </section>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
         <AttentionPanel items={attentionItems} />
-      </div>
-    </div>
+        </Col>
+      </Row>
+    </Space>
   );
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded border border-line bg-white px-4 py-3">
-      <div className="text-xs font-medium uppercase text-muted">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-ink">{value}</div>
-    </div>
+    <Col xs={12} md={8} lg={4}>
+      <Card size="small">
+        <Statistic title={label} value={value} />
+      </Card>
+    </Col>
   );
 }
 ```
@@ -1827,41 +1845,39 @@ Write `apps/web/src/components/issue-tree.tsx`:
 
 ```tsx
 import { Issue } from "@vagrant/core";
+import { Tree, Typography } from "antd";
 import { StatusBadge } from "@/components/status-badge";
+
+const { Text } = Typography;
 
 export function IssueTree({ root }: { root: Issue }) {
   return (
-    <div className="rounded border border-line bg-white">
-      <div className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Issue Tree</h2>
-      </div>
-      <div className="p-3">
-        <IssueNode issue={root} depth={0} />
-      </div>
-    </div>
+    <Tree
+      blockNode
+      defaultExpandAll
+      showLine
+      treeData={[toTreeNode(root)]}
+    />
   );
 }
 
-function IssueNode({ issue, depth }: { issue: Issue; depth: number }) {
-  return (
-    <div>
-      <div
-        className="grid grid-cols-[1fr_auto] items-center gap-3 rounded px-3 py-2 hover:bg-surface"
-        style={{ paddingLeft: `${12 + depth * 20}px` }}
-      >
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-ink">{issue.title}</div>
-          <div className="mt-0.5 text-xs text-muted">
+function toTreeNode(issue: Issue) {
+  return {
+    key: issue.id,
+    title: (
+      <div className="issue-tree-title">
+        <div>
+          <Text strong>{issue.title}</Text>
+          <br />
+          <Text type="secondary">
             {issue.ownerAgentRole ?? "unassigned"} · {issue.type} · {issue.evidence.length} evidence
-          </div>
+          </Text>
         </div>
         <StatusBadge status={issue.status} />
       </div>
-      {issue.children.map((child) => (
-        <IssueNode key={child.id} issue={child} depth={depth + 1} />
-      ))}
-    </div>
-  );
+    ),
+    children: issue.children.map(toTreeNode)
+  };
 }
 ```
 
@@ -1871,47 +1887,39 @@ Write `apps/web/src/components/issue-detail-panel.tsx`:
 
 ```tsx
 import { Issue, IssueTreeSummary } from "@vagrant/core";
+import { Card, Descriptions, Progress, Typography } from "antd";
 import { StatusBadge } from "@/components/status-badge";
+
+const { Text } = Typography;
 
 export function IssueDetailPanel({ issue, summary }: { issue: Issue; summary: IssueTreeSummary }) {
   return (
-    <aside className="rounded border border-line bg-white">
-      <div className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Requirement Status</h2>
-      </div>
-      <div className="space-y-4 px-4 py-4">
-        <div>
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-medium text-ink">{issue.title}</h3>
-            <StatusBadge status={summary.aggregateStatus} />
-          </div>
-          <p className="text-sm text-muted">{issue.description}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <Fact label="Progress" value={`${summary.progress}%`} />
-          <Fact label="Total" value={String(summary.total)} />
-          <Fact label="Done" value={String(summary.counts.done)} />
-          <Fact label="Blocked" value={String(summary.counts.blocked)} />
-        </div>
-        <div>
-          <h4 className="text-xs font-medium uppercase text-muted">Acceptance Criteria</h4>
-          <ul className="mt-2 space-y-1 text-sm text-ink">
-            {issue.acceptanceCriteria.map((criterion) => (
-              <li key={criterion}>- {criterion}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-line px-3 py-2">
-      <div className="text-xs text-muted">{label}</div>
-      <div className="mt-1 font-medium text-ink">{value}</div>
-    </div>
+    <Card title="Requirement Status" extra={<StatusBadge status={summary.aggregateStatus} />}>
+      <Text type="secondary">{issue.description}</Text>
+      <Progress percent={summary.progress} style={{ marginTop: 16 }} />
+      <Descriptions
+        size="small"
+        column={2}
+        style={{ marginTop: 16 }}
+        items={[
+          { key: "total", label: "Total", children: summary.total },
+          { key: "done", label: "Done", children: summary.counts.done },
+          { key: "review", label: "In review", children: summary.counts.in_review },
+          { key: "blocked", label: "Blocked", children: summary.counts.blocked }
+        ]}
+      />
+      <Descriptions
+        title="Acceptance Criteria"
+        size="small"
+        column={1}
+        style={{ marginTop: 16 }}
+        items={issue.acceptanceCriteria.map((criterion) => ({
+          key: criterion,
+          label: "Criterion",
+          children: criterion
+        }))}
+      />
+    </Card>
   );
 }
 ```
@@ -1920,6 +1928,9 @@ Write `apps/web/src/components/evidence-list.tsx`:
 
 ```tsx
 import { flattenIssueTree, Issue } from "@vagrant/core";
+import { Card, Empty, List, Tag, Typography } from "antd";
+
+const { Text } = Typography;
 
 export function EvidenceList({ root }: { root: Issue }) {
   const evidence = flattenIssueTree(root).flatMap((issue) =>
@@ -1927,24 +1938,28 @@ export function EvidenceList({ root }: { root: Issue }) {
   );
 
   return (
-    <section className="rounded border border-line bg-white">
-      <div className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Evidence</h2>
-      </div>
-      <div className="divide-y divide-line">
-        {evidence.length === 0 ? (
-          <div className="px-4 py-4 text-sm text-muted">No evidence has been captured yet.</div>
-        ) : (
-          evidence.map((item) => (
-            <article key={item.id} className="px-4 py-3">
-              <div className="text-xs font-medium uppercase text-muted">{item.kind}</div>
-              <h3 className="mt-1 text-sm font-medium text-ink">{item.title}</h3>
-              <p className="mt-1 text-sm text-muted">{item.issueTitle}</p>
-            </article>
-          ))
-        )}
-      </div>
-    </section>
+    <Card title="Evidence">
+      {evidence.length === 0 ? (
+        <Empty description="No evidence has been captured yet." />
+      ) : (
+        <List
+          dataSource={evidence}
+          renderItem={(item) => (
+            <List.Item>
+              <List.Item.Meta
+                title={item.title}
+                description={
+                  <>
+                    <Tag>{item.kind}</Tag>
+                    <Text type="secondary">{item.issueTitle}</Text>
+                  </>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      )}
+    </Card>
   );
 }
 ```
@@ -1953,26 +1968,30 @@ Write `apps/web/src/components/activity-timeline.tsx`:
 
 ```tsx
 import { flattenIssueTree, Issue } from "@vagrant/core";
+import { Card, Timeline, Typography } from "antd";
+
+const { Text } = Typography;
 
 export function ActivityTimeline({ root }: { root: Issue }) {
   const issues = flattenIssueTree(root);
 
   return (
-    <section className="rounded border border-line bg-white">
-      <div className="border-b border-line px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">Activity Timeline</h2>
-      </div>
-      <div className="divide-y divide-line">
-        {issues.map((issue) => (
-          <article key={issue.id} className="px-4 py-3">
-            <div className="text-sm font-medium text-ink">{issue.title}</div>
-            <p className="mt-1 text-sm text-muted">
-              {issue.ownerAgentRole ?? "unassigned"} is currently {issue.status.replace("_", " ")}.
-            </p>
-          </article>
-        ))}
-      </div>
-    </section>
+    <Card title="Activity Timeline">
+      <Timeline
+        items={issues.map((issue) => ({
+          key: issue.id,
+          children: (
+            <>
+              <Text strong>{issue.title}</Text>
+              <br />
+              <Text type="secondary">
+                {issue.ownerAgentRole ?? "unassigned"} is currently {issue.status.replace("_", " ")}.
+              </Text>
+            </>
+          )
+        }))}
+      />
+    </Card>
   );
 }
 ```
@@ -1983,6 +2002,7 @@ Write `apps/web/src/app/issues/[issueId]/page.tsx`:
 
 ```tsx
 import { aggregateIssueTree } from "@vagrant/core";
+import { Card, Col, Flex, Row, Space, Typography } from "antd";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { EvidenceList } from "@/components/evidence-list";
 import { IssueDetailPanel } from "@/components/issue-detail-panel";
@@ -1990,30 +2010,38 @@ import { IssueTree } from "@/components/issue-tree";
 import { StatusBadge } from "@/components/status-badge";
 import { getDemoData } from "@/lib/demo-data";
 
+const { Paragraph, Text, Title } = Typography;
+
 export default function RootIssuePage() {
   const { project, rootIssue } = getDemoData();
   const summary = aggregateIssueTree(rootIssue);
 
   return (
-    <div className="space-y-6">
-      <section className="flex items-start justify-between gap-6">
+    <Space direction="vertical" size={24} style={{ width: "100%" }}>
+      <Flex align="flex-start" justify="space-between" gap={24}>
         <div>
-          <p className="text-xs font-medium uppercase text-muted">{project.name}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ink">{rootIssue.title}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted">{rootIssue.description}</p>
+          <Text type="secondary">{project.name}</Text>
+          <Title level={2} style={{ margin: "4px 0 8px" }}>{rootIssue.title}</Title>
+          <Paragraph type="secondary" style={{ maxWidth: 760, margin: 0 }}>{rootIssue.description}</Paragraph>
         </div>
         <StatusBadge status={summary.aggregateStatus} />
-      </section>
+      </Flex>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-6">
-          <IssueTree root={rootIssue} />
+      <Row gutter={[24, 24]} align="top">
+        <Col xs={24} lg={16}>
+          <Space direction="vertical" size={24} style={{ width: "100%" }}>
+            <Card title="Issue Tree">
+              <IssueTree root={rootIssue} />
+            </Card>
           <ActivityTimeline root={rootIssue} />
           <EvidenceList root={rootIssue} />
-        </div>
+          </Space>
+        </Col>
+        <Col xs={24} lg={8}>
         <IssueDetailPanel issue={rootIssue} summary={summary} />
-      </div>
-    </div>
+        </Col>
+      </Row>
+    </Space>
   );
 }
 ```
