@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "pnpm --filter @vagrant/web dev",
     "dev:test": "VAGRANT_RUNTIME_DIR=.vagrant/runtime pnpm --filter @vagrant/web dev:test",
+    "pg:up": "docker volume create vagrant-postgres-data >/dev/null && docker rm -f vagrant-postgres >/dev/null 2>&1 || true && docker run -d --name vagrant-postgres -e POSTGRES_USER=vagrant -e POSTGRES_PASSWORD=vagrant -e POSTGRES_DB=vagrant -p 5432:5432 -v vagrant-postgres-data:/var/lib/postgresql/data --health-cmd='pg_isready -U vagrant -d vagrant' --health-interval=5s --health-timeout=5s --health-retries=20 postgres:16",
+    "pg:down": "docker rm -f vagrant-postgres",
+    "pg:logs": "docker logs -f vagrant-postgres",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

@@ -63,6 +63,44 @@ pnpm dev:test
 
 `pnpm dev:test` uses `VAGRANT_RUNTIME_DIR=.vagrant/runtime` and the same fixed URL: `http://localhost:3100`.
 
+## Local PostgreSQL
+
+The backend data store is PostgreSQL. Local development uses a fixed Docker container:
+
+```bash
+pnpm pg:up
+```
+
+Connection string:
+
+```bash
+DATABASE_URL=postgres://vagrant:vagrant@localhost:5432/vagrant
+```
+
+The Compose service uses:
+
+- container: `vagrant-postgres`
+- image: `postgres:16`
+- host port: `5432`
+- database: `vagrant`
+- user: `vagrant`
+- password: `vagrant`
+- volume: `vagrant-postgres-data`
+
+The repository also includes `docker-compose.yml` for environments with Docker Compose. The package scripts use plain `docker run` so they work on Docker installations without the Compose plugin.
+
+Stop the database:
+
+```bash
+pnpm pg:down
+```
+
+Follow logs:
+
+```bash
+pnpm pg:logs
+```
+
 ## Phase 2 Runtime Foundation
 
 Phase 2 adds the local execution foundation used by the future daemon:
