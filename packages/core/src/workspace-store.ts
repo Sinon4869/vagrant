@@ -1,8 +1,10 @@
 import {
   type AgentRun,
+  type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
   type Issue,
+  type IssueRelation,
   type KnowledgePage,
   type NotificationItem,
   type Project,
@@ -19,6 +21,10 @@ export interface WorkspaceStore {
   getRootIssue(rootIssueId: string): Promise<Issue | null>;
   listRootIssues(projectId: string): Promise<Issue[]>;
   upsertRootIssue(rootIssue: Issue): Promise<void>;
+  listIssueRelations(rootIssueId: string): Promise<IssueRelation[]>;
+  upsertIssueRelation(relation: IssueRelation): Promise<void>;
+  listDispatchActions(rootIssueId: string): Promise<DispatchAction[]>;
+  upsertDispatchAction(action: DispatchAction): Promise<void>;
   listAgentRuns(rootIssueId: string): Promise<AgentRun[]>;
   listProjectAgentRuns(projectId: string): Promise<AgentRun[]>;
   upsertAgentRun(run: AgentRun): Promise<void>;

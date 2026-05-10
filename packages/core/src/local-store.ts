@@ -2,9 +2,11 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   type AgentRun,
+  type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
   type Issue,
+  type IssueRelation,
   type KnowledgePage,
   type NotificationItem,
   type Project,
@@ -21,6 +23,8 @@ export interface LocalWorkspaceState {
   projects: Project[];
   repositories: RepositoryConfig[];
   rootIssues: Issue[];
+  issueRelations: IssueRelation[];
+  dispatchActions: DispatchAction[];
   agentRuns: AgentRun[];
   notifications: NotificationItem[];
   emailOutbox: EmailOutboxItem[];
@@ -34,6 +38,8 @@ const emptyState: LocalWorkspaceState = {
   projects: [],
   repositories: [],
   rootIssues: [],
+  issueRelations: [],
+  dispatchActions: [],
   agentRuns: [],
   notifications: [],
   emailOutbox: [],
@@ -107,6 +113,32 @@ export class LocalStore implements WorkspaceStore {
     await this.updateState((state) => ({
       ...state,
       rootIssues: upsertById(state.rootIssues, rootIssue)
+    }));
+  }
+
+  async listIssueRelations(rootIssueId: string): Promise<IssueRelation[]> {
+    const state = await this.readState();
+    return state.issueRelations.filter((relation) => relation.rootIssueId === rootIssueId);
+  }
+
+  async upsertIssueRelation(relation: IssueRelation): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      issueRelations: upsertById(state.issueRelations, relation)
+    }));
+  }
+
+  async listDispatchActions(rootIssueId: string): Promise<DispatchAction[]> {
+    const state = await this.readState();
+    return state.dispatchActions
+      .filter((action) => action.rootIssueId === rootIssueId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async upsertDispatchAction(action: DispatchAction): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      dispatchActions: upsertById(state.dispatchActions, action)
     }));
   }
 
@@ -214,6 +246,8 @@ export class LocalStore implements WorkspaceStore {
       ...emptyState,
       ...state,
       notifications: state.notifications ?? [],
+      issueRelations: state.issueRelations ?? [],
+      dispatchActions: state.dispatchActions ?? [],
       emailOutbox: state.emailOutbox ?? [],
       knowledgePages: state.knowledgePages ?? []
     };

@@ -82,10 +82,33 @@ describe("LocalStore", () => {
         dedupeKey: notification.dedupeKey,
         now
       });
+      const relation = {
+        id: "relation-1",
+        projectId: project.id,
+        rootIssueId: rootIssue.id,
+        sourceIssueId: rootIssue.id,
+        targetIssueId: rootIssue.id,
+        kind: "depends_on" as const,
+        createdAt: now
+      };
+      const dispatchAction = {
+        id: "dispatch-1",
+        projectId: project.id,
+        rootIssueId: rootIssue.id,
+        issueId: rootIssue.id,
+        kind: "start_agent_run" as const,
+        status: "pending" as const,
+        payload: { agentRole: AgentRole.BackendDeveloper },
+        idempotencyKey: "issue-root:issue-root:backend_developer:event-1:run",
+        createdAt: now,
+        updatedAt: now
+      };
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
       await store.upsertRootIssue(rootIssue);
+      await store.upsertIssueRelation(relation);
+      await store.upsertDispatchAction(dispatchAction);
       await store.upsertAgentRun(run);
       await store.upsertNotification(notification);
       await store.upsertEmailOutboxItem(email);
@@ -100,6 +123,8 @@ describe("LocalStore", () => {
       expect(await reloaded.listRepositories(project.id)).toEqual([repository]);
       expect(await reloaded.listRootIssues(project.id)).toEqual([rootIssue]);
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
+      expect(await reloaded.listIssueRelations(rootIssue.id)).toEqual([relation]);
+      expect(await reloaded.listDispatchActions(rootIssue.id)).toEqual([dispatchAction]);
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
       expect(await reloaded.listNotifications(project.id)).toEqual([notification]);

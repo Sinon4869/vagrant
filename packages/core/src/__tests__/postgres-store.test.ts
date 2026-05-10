@@ -84,10 +84,33 @@ describeIfDatabase("PostgresStore", () => {
       now
     });
     const dispatchKey = `${rootIssue.id}:${rootIssue.id}:backend_developer:event-1:run`;
+    const relation = {
+      id: `relation-${suffix}`,
+      projectId: project.id,
+      rootIssueId: rootIssue.id,
+      sourceIssueId: rootIssue.id,
+      targetIssueId: rootIssue.id,
+      kind: "depends_on" as const,
+      createdAt: now
+    };
+    const dispatchAction = {
+      id: `dispatch-${suffix}`,
+      projectId: project.id,
+      rootIssueId: rootIssue.id,
+      issueId: rootIssue.id,
+      kind: "start_agent_run" as const,
+      status: "pending" as const,
+      payload: { agentRole: AgentRole.BackendDeveloper },
+      idempotencyKey: dispatchKey,
+      createdAt: now,
+      updatedAt: now
+    };
 
     await store.upsertProject(project);
     await store.upsertRepository(repository);
     await store.upsertRootIssue(rootIssue);
+    await store.upsertIssueRelation(relation);
+    await store.upsertDispatchAction(dispatchAction);
     await store.upsertAgentRun(run);
     await store.upsertNotification(notification);
     await store.upsertEmailOutboxItem(email);
@@ -99,6 +122,8 @@ describeIfDatabase("PostgresStore", () => {
     expect(await store.listRepositories(project.id)).toEqual([repository]);
     expect(await store.listRootIssues(project.id)).toEqual([rootIssue]);
     expect(await store.getRootIssue(rootIssue.id)).toEqual(rootIssue);
+    expect(await store.listIssueRelations(rootIssue.id)).toEqual([relation]);
+    expect(await store.listDispatchActions(rootIssue.id)).toEqual([dispatchAction]);
     expect(await store.listAgentRuns(rootIssue.id)).toEqual([run]);
     expect(await store.listProjectAgentRuns(project.id)).toEqual([run]);
     expect(await store.listNotifications(project.id)).toEqual([notification]);

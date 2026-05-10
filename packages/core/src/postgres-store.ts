@@ -1,9 +1,11 @@
 import pg from "pg";
 import {
   type AgentRun,
+  type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
   type Issue,
+  type IssueRelation,
   type KnowledgePage,
   type NotificationItem,
   type Project,
@@ -52,6 +54,29 @@ export class PostgresStore implements WorkspaceStore {
         id text primary key,
         project_id text not null references projects(id) on delete cascade,
         issue jsonb not null,
+        updated_at timestamptz not null
+      );
+
+      create table if not exists issue_relations (
+        id text primary key,
+        project_id text not null references projects(id) on delete cascade,
+        root_issue_id text not null,
+        source_issue_id text not null,
+        target_issue_id text not null,
+        kind text not null,
+        created_at timestamptz not null
+      );
+
+      create table if not exists dispatch_actions (
+        id text primary key,
+        project_id text not null references projects(id) on delete cascade,
+        root_issue_id text not null,
+        issue_id text,
+        kind text not null,
+        status text not null,
+        payload jsonb not null,
+        idempotency_key text not null unique,
+        created_at timestamptz not null,
         updated_at timestamptz not null
       );
 
@@ -228,6 +253,77 @@ export class PostgresStore implements WorkspaceStore {
          issue = excluded.issue,
          updated_at = excluded.updated_at`,
       [rootIssue.id, rootIssue.projectId, JSON.stringify(rootIssue), rootIssue.updatedAt]
+    );
+  }
+
+  async listIssueRelations(rootIssueId: string): Promise<IssueRelation[]> {
+    const result = await this.pool.query<IssueRelationRow>(
+      "select * from issue_relations where root_issue_id = $1 order by created_at asc",
+      [rootIssueId]
+    );
+    return result.rows.map(issueRelationFromRow);
+  }
+
+  async upsertIssueRelation(relation: IssueRelation): Promise<void> {
+    await this.pool.query(
+      `insert into issue_relations (
+        id, project_id, root_issue_id, source_issue_id, target_issue_id, kind, created_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7)
+      on conflict (id) do update set
+        project_id = excluded.project_id,
+        root_issue_id = excluded.root_issue_id,
+        source_issue_id = excluded.source_issue_id,
+        target_issue_id = excluded.target_issue_id,
+        kind = excluded.kind`,
+      [
+        relation.id,
+        relation.projectId,
+        relation.rootIssueId,
+        relation.sourceIssueId,
+        relation.targetIssueId,
+        relation.kind,
+        relation.createdAt
+      ]
+    );
+  }
+
+  async listDispatchActions(rootIssueId: string): Promise<DispatchAction[]> {
+    const result = await this.pool.query<DispatchActionRow>(
+      "select * from dispatch_actions where root_issue_id = $1 order by updated_at desc",
+      [rootIssueId]
+    );
+    return result.rows.map(dispatchActionFromRow);
+  }
+
+  async upsertDispatchAction(action: DispatchAction): Promise<void> {
+    await this.pool.query(
+      `insert into dispatch_actions (
+        id, project_id, root_issue_id, issue_id, kind, status, payload,
+        idempotency_key, created_at, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      on conflict (id) do update set
+        project_id = excluded.project_id,
+        root_issue_id = excluded.root_issue_id,
+        issue_id = excluded.issue_id,
+        kind = excluded.kind,
+        status = excluded.status,
+        payload = excluded.payload,
+        idempotency_key = excluded.idempotency_key,
+        updated_at = excluded.updated_at`,
+      [
+        action.id,
+        action.projectId,
+        action.rootIssueId,
+        action.issueId,
+        action.kind,
+        action.status,
+        JSON.stringify(action.payload),
+        action.idempotencyKey,
+        action.createdAt,
+        action.updatedAt
+      ]
     );
   }
 
@@ -493,6 +589,29 @@ interface AgentRunRow {
   updated_at: Date;
 }
 
+interface IssueRelationRow {
+  id: string;
+  project_id: string;
+  root_issue_id: string;
+  source_issue_id: string;
+  target_issue_id: string;
+  kind: IssueRelation["kind"];
+  created_at: Date;
+}
+
+interface DispatchActionRow {
+  id: string;
+  project_id: string;
+  root_issue_id: string;
+  issue_id: string | null;
+  kind: DispatchAction["kind"];
+  status: DispatchAction["status"];
+  payload: Record<string, unknown>;
+  idempotency_key: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
 interface NotificationRow {
   id: string;
   project_id: string;
@@ -577,6 +696,33 @@ function agentRunFromRow(row: AgentRunRow): AgentRun {
     evidenceIds: row.evidence_ids,
     startedAt: row.started_at?.toISOString() ?? null,
     completedAt: row.completed_at?.toISOString() ?? null,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  };
+}
+
+function issueRelationFromRow(row: IssueRelationRow): IssueRelation {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    rootIssueId: row.root_issue_id,
+    sourceIssueId: row.source_issue_id,
+    targetIssueId: row.target_issue_id,
+    kind: row.kind,
+    createdAt: row.created_at.toISOString()
+  };
+}
+
+function dispatchActionFromRow(row: DispatchActionRow): DispatchAction {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    rootIssueId: row.root_issue_id,
+    issueId: row.issue_id,
+    kind: row.kind,
+    status: row.status,
+    payload: row.payload,
+    idempotencyKey: row.idempotency_key,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString()
   };
