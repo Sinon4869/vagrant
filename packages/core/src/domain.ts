@@ -98,6 +98,39 @@ export interface Issue {
   updatedAt: string;
 }
 
+export type IssueRelationKind = "depends_on" | "blocks" | "duplicates" | "supersedes" | "related_to";
+
+export interface IssueRelation {
+  id: string;
+  projectId: string;
+  rootIssueId: string;
+  sourceIssueId: string;
+  targetIssueId: string;
+  kind: IssueRelationKind;
+  createdAt: string;
+}
+
+export type DispatchActionKind =
+  | "start_agent_run"
+  | "request_approval"
+  | "mark_issue_blocked"
+  | "create_notification";
+
+export type DispatchActionStatus = "pending" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface DispatchAction {
+  id: string;
+  projectId: string;
+  rootIssueId: string;
+  issueId: string | null;
+  kind: DispatchActionKind;
+  status: DispatchActionStatus;
+  payload: Record<string, unknown>;
+  idempotencyKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateIssueInput {
   id: string;
   projectId: string;
