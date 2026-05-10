@@ -4,9 +4,12 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   aggregateIssueTree,
+  flattenIssueTree,
   type AgentRun,
+  type AgentRunStatus,
   AgentRole,
   RuntimeKind,
+  IssueStatus,
   type Issue,
   type KnowledgePage,
   type NotificationItem,
@@ -69,6 +72,7 @@ export interface RequirementsWorkspaceView {
 export interface RunRow {
   id: string;
   issueId: string;
+  rootIssueId: string;
   issue: string;
   agent: string;
   runtime: string;
@@ -148,6 +152,59 @@ export interface KnowledgeWorkspaceView {
   knowledgePages: KnowledgePageRow[];
   requirements: RequirementRow[];
   repositories: RepositoryRow[];
+}
+
+export interface CockpitRequirementRow extends RequirementRow {
+  blocked: number;
+  activeRuns: number;
+  evidence: number;
+  latestRun: RunRow | null;
+}
+
+export interface CockpitAttentionItem {
+  id: string;
+  severity: "critical" | "warning" | "info";
+  title: string;
+  body: string;
+  owner: string;
+  source: string;
+  action: string;
+  href: string;
+}
+
+export interface CockpitEvidenceRow {
+  id: string;
+  title: string;
+  kind: string;
+  issue: string;
+  createdAt: string;
+  href: string | null;
+}
+
+export interface ProjectHealthItem {
+  label: string;
+  value: string;
+  status: "healthy" | "warning" | "critical";
+}
+
+export interface CockpitWorkspaceView {
+  project: {
+    id: string;
+    name: string;
+    description: string;
+  };
+  health: ProjectHealthItem[];
+  requirements: CockpitRequirementRow[];
+  attention: CockpitAttentionItem[];
+  runs: RunRow[];
+  evidence: CockpitEvidenceRow[];
+  summary: {
+    requirements: number;
+    activeRuns: number;
+    blockedIssues: number;
+    pendingNotifications: number;
+    repositories: number;
+  };
 }
 
 export function getRuntimeDir(): string {
@@ -344,6 +401,66 @@ export async function getKnowledgeWorkspaceView(projectId = DEFAULT_PROJECT_ID):
   };
 }
 
+export async function getCockpitWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<CockpitWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
+  }
+
+  const repositories = await store.listRepositories(project.id);
+  const rootIssues = await store.listRootIssues(project.id);
+  const runs = await store.listProjectAgentRuns(project.id);
+  const notifications = await store.listNotifications(project.id);
+  const rootRows = rootIssues.map((issue) => toCockpitRequirementRow(issue, repositories, runs));
+  const runRows = runs.map((run) => toRunRow(run, rootIssues, repositories));
+  const activeRuns = runs.filter((run) => isActiveRunStatus(run.status)).length;
+  const blockedIssues = rootIssues.reduce((total, issue) => total + countIssuesByStatus(issue, IssueStatus.Blocked), 0);
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name,
+      description: project.description
+    },
+    health: [
+      {
+        label: "Storage",
+        value: process.env.VAGRANT_STORAGE === "postgres" || process.env.DATABASE_URL ? "PostgreSQL" : "Local JSON",
+        status: process.env.VAGRANT_STORAGE === "postgres" || process.env.DATABASE_URL ? "healthy" : "warning"
+      },
+      {
+        label: "Runtime",
+        value: runtimeLabel(RuntimeKind.CodexCli),
+        status: "healthy"
+      },
+      {
+        label: "Repositories",
+        value: repositories.length > 0 ? `${repositories.length} configured` : "Missing",
+        status: repositories.length > 0 ? "healthy" : "critical"
+      },
+      {
+        label: "Attention",
+        value: notifications.length > 0 ? `${notifications.length} pending` : "Clear",
+        status: notifications.some((notification) => notification.severity === "high") ? "critical" : notifications.length > 0 ? "warning" : "healthy"
+      }
+    ],
+    requirements: rootRows,
+    attention: buildCockpitAttention(rootIssues, notifications),
+    runs: runRows.slice(0, 6),
+    evidence: buildRecentEvidence(rootIssues).slice(0, 8),
+    summary: {
+      requirements: rootIssues.length,
+      activeRuns,
+      blockedIssues,
+      pendingNotifications: notifications.length,
+      repositories: repositories.length
+    }
+  };
+}
+
 async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
   const seed = createPersistedDemoState({
     repositoryLocalPath: process.cwd(),
@@ -418,12 +535,31 @@ function toRequirementRow(issue: Issue, repositories: RepositoryConfig[]): Requi
   };
 }
 
+function toCockpitRequirementRow(issue: Issue, repositories: RepositoryConfig[], runs: AgentRun[]): CockpitRequirementRow {
+  const row = toRequirementRow(issue, repositories);
+  const issueIds = new Set(flattenIssueTree(issue).map((node) => node.id));
+  const issueRuns = runs.filter((run) => issueIds.has(run.issueId));
+  const latestRun = issueRuns
+    .slice()
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+
+  return {
+    ...row,
+    blocked: countIssuesByStatus(issue, IssueStatus.Blocked),
+    activeRuns: issueRuns.filter((run) => isActiveRunStatus(run.status)).length,
+    evidence: flattenIssueTree(issue).reduce((total, node) => total + node.evidence.length, 0),
+    latestRun: latestRun ? toRunRow(latestRun, [issue], repositories) : null
+  };
+}
+
 function toRunRow(run: AgentRun, rootIssues: Issue[], repositories: RepositoryConfig[]): RunRow {
   const issue = findIssueById(rootIssues, run.issueId);
+  const rootIssue = findRootIssueForIssue(rootIssues, run.issueId);
 
   return {
     id: run.id,
     issueId: run.issueId,
+    rootIssueId: rootIssue?.id ?? run.issueId,
     issue: issue?.title ?? run.issueId,
     agent: agentRoleLabel(run.agentRole),
     runtime: runtimeLabel(run.runtimeKind),
@@ -526,6 +662,73 @@ function formatDateTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function buildCockpitAttention(rootIssues: Issue[], notifications: NotificationItem[]): CockpitAttentionItem[] {
+  const items: CockpitAttentionItem[] = notifications.map((notification) => {
+    const issue = notification.issueId ? findIssueById(rootIssues, notification.issueId) : null;
+
+    return {
+      id: notification.id,
+      severity: notification.severity === "high" ? "critical" : notification.type === "digest" ? "info" : "warning",
+      title: notification.title,
+      body: notification.body,
+      owner: issue?.ownerAgentRole ? agentRoleLabel(issue.ownerAgentRole) : "Project operator",
+      source: notificationTypeLabel(notification.type),
+      action: notification.type === "approval_required" ? "Review approval gate" : "Open requirement context",
+      href: issue ? `/issues/${issue.parentIssueId ?? issue.id}` : "/inbox"
+    };
+  });
+
+  const blocked = rootIssues.flatMap((root) =>
+    flattenIssueTree(root)
+      .filter((issue) => issue.status === IssueStatus.Blocked || issue.blockers.some((blocker) => !blocker.resolvedAt))
+      .map((issue) => ({
+        id: `blocked-${issue.id}`,
+        severity: "critical" as const,
+        title: issue.title,
+        body: issue.blockers.find((blocker) => !blocker.resolvedAt)?.reason ?? "Issue is blocked and needs intervention.",
+        owner: issue.ownerAgentRole ? agentRoleLabel(issue.ownerAgentRole) : "Unassigned",
+        source: "Blocked issue",
+        action: "Open issue tree",
+        href: `/issues/${root.id}`
+      }))
+  );
+
+  return [...blocked, ...items].slice(0, 6);
+}
+
+function buildRecentEvidence(rootIssues: Issue[]): CockpitEvidenceRow[] {
+  return rootIssues
+    .flatMap((root) =>
+      flattenIssueTree(root).flatMap((issue) =>
+        issue.evidence.map((item) => ({
+          id: item.id,
+          title: item.title,
+          kind: item.kind,
+          issue: issue.title,
+          createdAt: item.createdAt,
+          href: item.url
+        }))
+      )
+    )
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .map((item) => ({
+      ...item,
+      createdAt: formatDateTime(item.createdAt)
+    }));
+}
+
+function countIssuesByStatus(issue: Issue, status: IssueStatus): number {
+  return flattenIssueTree(issue).filter((node) => node.status === status).length;
+}
+
+function isActiveRunStatus(status: AgentRunStatus): boolean {
+  return status === "queued" || status === "running";
+}
+
+function findRootIssueForIssue(rootIssues: Issue[], issueId: string): Issue | null {
+  return rootIssues.find((root) => Boolean(findIssueById([root], issueId))) ?? null;
 }
 
 function agentRoleLabel(role: AgentRole): string {

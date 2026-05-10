@@ -21,17 +21,34 @@ import { getDemoData } from "@/lib/demo-data";
 const { Content, Sider } = Layout;
 const { Text, Title } = Typography;
 
-const navItems = [
-  { key: "/", href: "/", icon: <DashboardOutlined />, label: "Overview" },
-  { key: "/projects", href: "/projects", icon: <ProjectOutlined />, label: "Projects" },
-  { key: "/requirements", href: "/requirements", icon: <NodeIndexOutlined />, label: "Requirements" },
-  { key: "/knowledge", href: "/knowledge", icon: <BookOutlined />, label: "Knowledge" },
-  { key: "/repositories", href: "/repositories", icon: <BranchesOutlined />, label: "Repositories" },
-  { key: "/agents", href: "/agents", icon: <RobotOutlined />, label: "Agents" },
-  { key: "/runs", href: "/runs", icon: <CodeOutlined />, label: "Runs" },
-  { key: "/inbox", href: "/inbox", icon: <BellOutlined />, label: "Inbox" },
-  { key: "/settings", href: "/settings", icon: <SettingOutlined />, label: "Settings" }
+const navGroups = [
+  {
+    label: "Primary",
+    items: [
+      { key: "/", href: "/", icon: <DashboardOutlined />, label: "Operations" },
+      { key: "/requirements", href: "/requirements", icon: <NodeIndexOutlined />, label: "Requirements" },
+      { key: "/runs", href: "/runs", icon: <CodeOutlined />, label: "Runs" },
+      { key: "/inbox", href: "/inbox", icon: <BellOutlined />, label: "Inbox" }
+    ]
+  },
+  {
+    label: "Project",
+    items: [
+      { key: "/projects", href: "/projects", icon: <ProjectOutlined />, label: "Projects" },
+      { key: "/repositories", href: "/repositories", icon: <BranchesOutlined />, label: "Repositories" },
+      { key: "/knowledge", href: "/knowledge", icon: <BookOutlined />, label: "Knowledge" },
+      { key: "/agents", href: "/agents", icon: <RobotOutlined />, label: "Agents" }
+    ]
+  },
+  {
+    label: "System",
+    items: [
+      { key: "/settings", href: "/settings", icon: <SettingOutlined />, label: "Settings" }
+    ]
+  }
 ];
+
+const navItems = navGroups.flatMap((group) => group.items);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -60,16 +77,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Text>
         </div>
 
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          className="side-nav"
-          items={navItems.map((item) => ({
-            key: item.key,
-            icon: item.icon,
-            label: <Link href={item.href}>{item.label}</Link>
-          }))}
-        />
+        <nav className="nav-groups" aria-label="Application navigation">
+          {navGroups.map((group) => (
+            <div key={group.label} className="nav-group">
+              <Text type="secondary" className="nav-group-label">
+                {group.label}
+              </Text>
+              <Menu
+                mode="inline"
+                selectedKeys={[selectedKey]}
+                className="side-nav"
+                items={group.items.map((item) => ({
+                  key: item.key,
+                  icon: item.icon,
+                  label: <Link href={item.href}>{item.label}</Link>
+                }))}
+              />
+            </div>
+          ))}
+        </nav>
 
         <div className="sider-footer">
           <Text type="secondary">Autopilot</Text>
@@ -86,11 +112,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Text type="secondary">Project workspace</Text>
             <Text strong>{project.description}</Text>
           </Space>
-          <Space>
-            <Button icon={<FolderOpenOutlined />}>Open worktree</Button>
-            <Button type="primary" icon={<NodeIndexOutlined />}>
+          <Space wrap>
+            <Link href="/repositories">
+              <Button icon={<FolderOpenOutlined />}>Repositories</Button>
+            </Link>
+            <Link href="/requirements">
+              <Button type="primary" icon={<NodeIndexOutlined />}>
               New requirement
-            </Button>
+              </Button>
+            </Link>
           </Space>
         </div>
         <Content className="app-content">{children}</Content>

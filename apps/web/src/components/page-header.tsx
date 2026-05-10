@@ -8,11 +8,13 @@ export function PageHeader({
   eyebrow,
   title,
   description,
+  metadata,
   actions
 }: {
   eyebrow: string;
   title: string;
   description: string;
+  metadata?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   return (
@@ -21,6 +23,7 @@ export function PageHeader({
         <Text type="secondary">{eyebrow}</Text>
         <Title level={2}>{title}</Title>
         <Paragraph type="secondary">{description}</Paragraph>
+        {metadata}
       </Space>
       {actions}
     </Flex>

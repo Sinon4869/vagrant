@@ -1,7 +1,20 @@
 :root {
   color-scheme: light;
-  background: #f7f8fa;
-  color: #171717;
+  --app-bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-subtle: #f1f3f5;
+  --border: #d8dde3;
+  --border-soft: #e8ebef;
+  --text-primary: #16181d;
+  --text-secondary: #5f6875;
+  --text-muted: #8a93a2;
+  --accent: #147d64;
+  --accent-hover: #0f6b55;
+  --accent-subtle: #e4f3ee;
+  --danger-subtle: #fff1f0;
+  --warning-subtle: #fff8e1;
+  background: var(--app-bg);
+  color: var(--text-primary);
 }
 
 * {
@@ -11,8 +24,8 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f7f8fa;
-  color: #171717;
+  background: var(--app-bg);
+  color: var(--text-primary);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -23,15 +36,15 @@ a {
 
 .app-shell {
   min-height: 100dvh;
-  background: #f7f8fa;
+  background: var(--app-bg);
 }
 
 .app-sider {
   position: sticky !important;
   top: 0;
   height: 100dvh;
-  background: #ffffff;
-  border-right: 1px solid #d9dde3;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   overflow: auto;
 }
 
@@ -42,7 +55,7 @@ a {
   gap: 12px;
   height: 64px;
   padding: 0 18px;
-  border-bottom: 1px solid #edf0f3;
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .brand-link {
@@ -51,14 +64,14 @@ a {
   gap: 8px;
   font-size: 14px;
   font-weight: 700;
-  color: #171717;
+  color: var(--text-primary);
 }
 
 .project-switcher {
   margin: 16px;
   padding: 14px;
-  background: #f7f8fa;
-  border: 1px solid #e5e8ec;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
   border-radius: 8px;
 }
 
@@ -74,9 +87,24 @@ a {
   white-space: nowrap;
 }
 
+.nav-groups {
+  display: grid;
+  gap: 14px;
+  padding: 4px 10px 10px;
+}
+
+.nav-group-label {
+  display: block;
+  padding: 0 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
 .side-nav {
   border-inline-end: 0 !important;
-  padding: 4px 10px;
+  padding: 0;
 }
 
 .side-nav .ant-menu-item {
@@ -87,12 +115,12 @@ a {
 .sider-footer {
   margin: 16px;
   padding-top: 16px;
-  border-top: 1px solid #edf0f3;
+  border-top: 1px solid var(--border-soft);
 }
 
 .main-layout {
   min-width: 0;
-  background: #f7f8fa;
+  background: var(--app-bg);
 }
 
 .app-topbar {
@@ -106,13 +134,204 @@ a {
   min-height: 64px;
   padding: 12px 28px;
   background: rgba(255, 255, 255, 0.94);
-  border-bottom: 1px solid #d9dde3;
+  border-bottom: 1px solid var(--border);
 }
 
 .app-content {
   width: min(1280px, calc(100vw - 312px));
   margin: 0 auto;
   padding: 24px 0 40px;
+}
+
+.full-width,
+.cockpit-page {
+  width: 100%;
+}
+
+.mono-text {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.status-badge {
+  margin-inline-end: 0;
+  border-radius: 6px;
+}
+
+.status-badge.compact {
+  font-size: 12px;
+}
+
+.health-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.health-cell {
+  display: grid;
+  gap: 4px;
+  min-height: 68px;
+  padding: 14px 16px;
+  border-right: 1px solid var(--border-soft);
+}
+
+.health-cell:last-child {
+  border-right: 0;
+}
+
+.health-cell strong {
+  color: var(--text-primary);
+}
+
+.health-healthy {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.health-warning {
+  box-shadow: inset 3px 0 0 #b7791f;
+}
+
+.health-critical {
+  box-shadow: inset 3px 0 0 #b42318;
+}
+
+.cockpit-grid,
+.cockpit-lower-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.cockpit-grid {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+}
+
+.cockpit-lower-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.78fr);
+}
+
+.cockpit-main-panel,
+.cockpit-panel,
+.attention-rail {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.cockpit-main-panel,
+.cockpit-panel {
+  overflow: hidden;
+}
+
+.attention-rail {
+  padding: 16px;
+}
+
+.panel-header {
+  min-height: 52px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.attention-rail .panel-header {
+  min-height: 40px;
+  padding: 0 0 12px;
+  margin-bottom: 12px;
+}
+
+.panel-header h4 {
+  margin: 0;
+}
+
+.attention-card {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.attention-card:hover {
+  background: var(--surface-subtle);
+  border-color: var(--border);
+}
+
+.attention-card:active {
+  transform: translateY(1px);
+}
+
+.attention-card .ant-typography {
+  margin-bottom: 4px;
+}
+
+.attention-icon {
+  color: var(--text-secondary);
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.attention-critical {
+  background: var(--danger-subtle);
+  border-color: #ffccc7;
+}
+
+.attention-warning {
+  background: var(--warning-subtle);
+  border-color: #ffe7ba;
+}
+
+.dense-list {
+  width: 100%;
+}
+
+.run-row,
+.evidence-row {
+  display: grid;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 16px;
+  color: inherit;
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.18s ease;
+}
+
+.run-row {
+  grid-template-columns: minmax(0, 1fr) 180px 130px;
+  gap: 16px;
+}
+
+.evidence-row {
+  grid-template-columns: 120px minmax(0, 1fr) 120px;
+  gap: 16px;
+}
+
+.run-row:hover,
+.evidence-row:hover {
+  background: var(--surface-subtle);
+}
+
+.run-row .ant-typography,
+.evidence-row .ant-typography {
+  display: block;
+}
+
+.empty-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  padding: 16px;
+  color: var(--text-secondary);
 }
 
 .page-header h2,
@@ -190,7 +409,7 @@ a {
 
   .side-nav {
     display: block;
-    padding-bottom: 12px;
+    padding-bottom: 0;
   }
 
   .sider-footer {
@@ -207,6 +426,22 @@ a {
   .app-content {
     width: calc(100vw - 32px);
     padding: 16px 0 32px;
+  }
+
+  .health-strip,
+  .cockpit-grid,
+  .cockpit-lower-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .health-cell {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .run-row,
+  .evidence-row {
+    grid-template-columns: 1fr;
   }
 
   .repository-form {
