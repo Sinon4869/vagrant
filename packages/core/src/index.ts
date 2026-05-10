@@ -3,3 +3,5 @@ export * from "./issue-tree.js";
 export * from "./rule-planner.js";
 export * from "./adapters.js";
 export * from "./dispatcher.js";
+export * from "./notifications.js";
+export * from "./seed.js";
