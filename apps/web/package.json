@@ -7,8 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "test": "vitest run --passWithNoTests",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "lint": "next typegen && tsc -p tsconfig.json --noEmit",
+    "typecheck": "next typegen && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@vagrant/core": "workspace:*",

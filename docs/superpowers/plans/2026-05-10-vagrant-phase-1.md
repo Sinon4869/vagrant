@@ -1432,8 +1432,8 @@ Write `apps/web/package.json`:
     "dev": "next dev",
     "build": "next build",
     "test": "vitest run --passWithNoTests",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "lint": "next typegen && tsc -p tsconfig.json --noEmit",
+    "typecheck": "next typegen && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@vagrant/core": "workspace:*",
@@ -1479,9 +1479,10 @@ Write `apps/web/tsconfig.json`:
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "isolatedModules": true
   },
-  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx"],
+  "include": ["next-env.d.ts", "src/**/*.ts", "src/**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
 }
 ```
