@@ -143,6 +143,17 @@ a {
   width: fit-content;
 }
 
+.requirement-form {
+  display: grid;
+  grid-template-columns: 2fr 3fr minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.requirement-form .ant-form-item {
+  margin-bottom: 0;
+}
+
 .issue-tree-title {
   display: flex;
   align-items: center;
@@ -188,6 +199,10 @@ a {
   }
 
   .repository-form {
+    grid-template-columns: 1fr;
+  }
+
+  .requirement-form {
     grid-template-columns: 1fr;
   }
 }

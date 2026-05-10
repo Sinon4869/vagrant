@@ -145,7 +145,9 @@ export class LocalStore {
   }
 
   private async writeState(state: LocalWorkspaceState): Promise<void> {
-    const temporaryPath = `${this.statePath}.tmp`;
+    const temporaryPath = `${this.statePath}.${process.pid}.${Date.now()}.${Math.random()
+      .toString(36)
+      .slice(2)}.tmp`;
     await mkdir(dirname(this.statePath), { recursive: true });
     await writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
     await rename(temporaryPath, this.statePath);

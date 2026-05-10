@@ -1,7 +1,7 @@
 import { aggregateIssueTree } from "@vagrant/core";
 import { notFound } from "next/navigation";
 import { RootIssuePageClient } from "@/components/root-issue-page-client";
-import { getDemoData } from "@/lib/demo-data";
+import { getPersistedRootIssue } from "@/lib/workspace-store";
 
 type RootIssuePageProps = {
   params: Promise<{ issueId: string }>;
@@ -9,13 +9,23 @@ type RootIssuePageProps = {
 
 export default async function RootIssuePage({ params }: RootIssuePageProps) {
   const { issueId } = await params;
-  const { project, rootIssue } = getDemoData();
+  const rootIssue = await getPersistedRootIssue(issueId);
 
-  if (issueId !== rootIssue.id) {
+  if (!rootIssue) {
     notFound();
   }
 
   const summary = aggregateIssueTree(rootIssue);
 
-  return <RootIssuePageClient project={project} rootIssue={rootIssue} summary={summary} />;
+  return (
+    <RootIssuePageClient
+      project={{
+        id: rootIssue.projectId,
+        name: "vagrant",
+        repositoryUrl: "local workspace"
+      }}
+      rootIssue={rootIssue}
+      summary={summary}
+    />
+  );
 }
