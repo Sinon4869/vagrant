@@ -3,7 +3,9 @@ import "server-only";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  aggregateIssueTree,
   RuntimeKind,
+  type Issue,
   type RepositoryConfig,
   type RepositoryProviderType,
   createPersistedDemoState
@@ -32,6 +34,28 @@ export interface RepositoryWorkspaceView {
     description: string;
     defaultRuntimeKind: RuntimeKind;
   };
+  repositories: RepositoryRow[];
+}
+
+export interface RequirementRow {
+  id: string;
+  title: string;
+  description: string;
+  owner: string;
+  status: Issue["status"];
+  progress: number;
+  subissues: number;
+  repositoryIds: string[];
+  knowledgeIds: string[];
+  updatedAt: string;
+}
+
+export interface RequirementsWorkspaceView {
+  project: {
+    id: string;
+    name: string;
+  };
+  requirements: RequirementRow[];
   repositories: RepositoryRow[];
 }
 
@@ -70,6 +94,32 @@ export async function getRepositoryWorkspaceView(): Promise<RepositoryWorkspaceV
   };
 }
 
+export async function getRequirementsWorkspaceView(): Promise<RequirementsWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const project = await store.getProject(DEFAULT_PROJECT_ID);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+  }
+
+  const repositories = await store.listRepositories(project.id);
+  const rootIssues = await store.listRootIssues(project.id);
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name
+    },
+    requirements: rootIssues.map((issue) => toRequirementRow(issue, repositories)),
+    repositories: repositories.map((repository) => toRepositoryRow(repository, rootIssues.length))
+  };
+}
+
+export async function getPersistedRootIssue(issueId: string): Promise<Issue | null> {
+  const store = await getWorkspaceStore();
+  return store.getRootIssue(issueId);
+}
+
 async function ensureDefaultWorkspace(store: LocalStore): Promise<void> {
   const existingProject = await store.getProject(DEFAULT_PROJECT_ID);
 
@@ -98,6 +148,23 @@ function toRepositoryRow(repository: RepositoryConfig, linkedRequirements: numbe
     baseBranch: repository.defaultBaseBranch,
     linkedRequirements,
     health: repository.remoteUrl ? "Configured" : "Local"
+  };
+}
+
+function toRequirementRow(issue: Issue, repositories: RepositoryConfig[]): RequirementRow {
+  const summary = aggregateIssueTree(issue);
+
+  return {
+    id: issue.id,
+    title: issue.title,
+    description: issue.description,
+    owner: issue.ownerAgentRole ?? "unassigned",
+    status: summary.aggregateStatus,
+    progress: summary.progress,
+    subissues: Math.max(summary.total - 1, 0),
+    repositoryIds: repositories.slice(0, 1).map((repository) => repository.id),
+    knowledgeIds: issue.id === "issue-vagrant-knowledge" ? ["wiki-agent-context", "wiki-runtime-policy"] : [],
+    updatedAt: issue.updatedAt
   };
 }
 
