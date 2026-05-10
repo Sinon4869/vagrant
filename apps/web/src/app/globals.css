@@ -447,6 +447,35 @@ a {
   border-radius: 6px;
 }
 
+.requirements-queue-page,
+.runs-audit-page {
+  width: 100%;
+}
+
+.queue-toolbar,
+.queue-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.queue-toolbar {
+  padding: 12px 14px;
+}
+
+.queue-panel {
+  overflow: hidden;
+}
+
+.ant-drawer .requirement-form {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.ant-drawer .requirement-form button {
+  width: 100%;
+}
+
 .issue-tree-panel .ant-tree-title {
   min-width: 0;
 }
