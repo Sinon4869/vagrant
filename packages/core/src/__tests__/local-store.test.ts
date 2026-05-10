@@ -60,6 +60,7 @@ describe("LocalStore", () => {
       expect(await reloaded.listRootIssues(project.id)).toEqual([rootIssue]);
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
+      expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
       expect(await reloaded.hasDispatchKey("issue-root:issue-root:backend_developer:event-1:run")).toBe(true);
     });
   });

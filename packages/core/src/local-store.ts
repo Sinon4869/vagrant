@@ -101,6 +101,11 @@ export class LocalStore {
     return state.agentRuns.filter((run) => issueIds.has(run.issueId));
   }
 
+  async listProjectAgentRuns(projectId: string): Promise<AgentRun[]> {
+    const state = await this.readState();
+    return state.agentRuns.filter((run) => run.projectId === projectId);
+  }
+
   async upsertAgentRun(run: AgentRun): Promise<void> {
     await this.updateState((state) => ({
       ...state,

@@ -17,9 +17,10 @@ export interface DispatchPersistedReadyIssueInput {
   repositoryId: string;
   triggerEventId: string;
   runtimeKind: RuntimeKind;
-  workspaceManager: WorkspaceManager;
+  workspaceManager?: WorkspaceManager;
   runtime: RuntimeAdapter;
   provider: ProviderAdapter;
+  workingDirectory?: string;
 }
 
 export async function dispatchPersistedReadyIssue(
@@ -31,11 +32,7 @@ export async function dispatchPersistedReadyIssue(
     throw new Error(`Root issue not found: ${input.rootIssueId}`);
   }
 
-  const repository = await findRepository(input.store, root.projectId, input.repositoryId);
-  const worktree = await input.workspaceManager.ensureRootIssueWorktree({
-    repository,
-    rootIssueId: root.id
-  });
+  const workingDirectory = await resolveWorkingDirectory(input, root);
   const previousDispatchKeys = await input.store.listDispatchKeys();
 
   const result = await dispatchReadyIssues({
@@ -57,7 +54,7 @@ export async function dispatchPersistedReadyIssue(
       issueId: run.issueId,
       agentRole: issue?.ownerAgentRole ?? AgentRole.EngineeringLead,
       runtimeKind: input.runtimeKind,
-      workingDirectory: worktree.workingDirectory,
+      workingDirectory,
       prompt: issue ? `Issue: ${issue.title}` : `Issue: ${run.issueId}`,
       now: "2026-05-10T00:00:00.000Z"
     });
@@ -65,6 +62,20 @@ export async function dispatchPersistedReadyIssue(
   }
 
   return result;
+}
+
+async function resolveWorkingDirectory(input: DispatchPersistedReadyIssueInput, root: Issue): Promise<string> {
+  if (!input.workspaceManager) {
+    return input.workingDirectory ?? `/mock/workspaces/${root.id}`;
+  }
+
+  const repository = await findRepository(input.store, root.projectId, input.repositoryId);
+  const worktree = await input.workspaceManager.ensureRootIssueWorktree({
+    repository,
+    rootIssueId: root.id
+  });
+
+  return worktree.workingDirectory;
 }
 
 async function findRepository(
