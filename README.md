@@ -54,3 +54,14 @@ pnpm dev
 ```
 
 Open `http://localhost:3000`.
+
+## Phase 2 Runtime Foundation
+
+Phase 2 adds the local execution foundation used by the future daemon:
+
+- `LocalStore` persists projects, configured repositories, root issue trees, agent runs, evidence, and dispatch idempotency keys in `.vagrant/runtime/workspace-state.json`.
+- Repository configuration is provider-neutral. A project repository can point to GitHub, GitLab, Gitea, Bitbucket, a private git server, or a local-only checkout.
+- `WorkspaceManager` uses generic `git fetch` and `git worktree add` commands to isolate each root issue under a configurable worktree directory.
+- `CodexCliRuntimeAdapter` and `ClaudeCliRuntimeAdapter` call local CLI binaries through an injectable process runner.
+
+The Phase 2 CLI adapters are intentionally skeletal. They establish the command boundary and evidence capture contract; the daemon, streaming logs, approvals, email digests, provider sync, and wiki indexing are separate follow-up phases.

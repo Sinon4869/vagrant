@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { MockProviderAdapter } from "../adapters.js";
 import { RuntimeKind, createProject, createRepositoryConfig } from "../domain.js";
-import { LocalStore } from "../local-store.js";
-import { withTempRuntimeDir } from "../local-store.test-helpers.js";
-import { dispatchPersistedReadyIssue } from "../persistent-dispatcher.js";
-import { FakeProcessRunner } from "../process-runner.js";
+import {
+  CodexCliRuntimeAdapter,
+  FakeProcessRunner,
+  LocalStore,
+  WorkspaceManager,
+  dispatchPersistedReadyIssue
+} from "../node.js";
 import { planIssueTree } from "../rule-planner.js";
-import { CodexCliRuntimeAdapter } from "../runtime-adapters.js";
-import { WorkspaceManager } from "../workspace-manager.js";
+import { withTempRuntimeDir } from "./test-helpers.js";
 
 const now = "2026-05-10T00:00:00.000Z";
 

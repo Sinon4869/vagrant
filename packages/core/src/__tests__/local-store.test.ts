@@ -8,8 +8,8 @@ import {
   createProject,
   createRepositoryConfig
 } from "../domain.js";
-import { LocalStore } from "../local-store.js";
-import { withTempRuntimeDir } from "../local-store.test-helpers.js";
+import { LocalStore } from "../node.js";
+import { withTempRuntimeDir } from "./test-helpers.js";
 
 const now = "2026-05-10T00:00:00.000Z";
 

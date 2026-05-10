@@ -38,7 +38,7 @@ export class NodeProcessRunner implements ProcessRunner {
         stderr += chunk;
       });
       child.on("error", reject);
-      child.on("close", (exitCode) => {
+      child.on("close", (exitCode: number | null) => {
         resolve({
           exitCode: exitCode ?? 1,
           stdout,

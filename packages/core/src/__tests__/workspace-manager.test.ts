@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRepositoryConfig } from "../domain.js";
-import { FakeProcessRunner } from "../process-runner.js";
-import { WorkspaceManager } from "../workspace-manager.js";
+import { FakeProcessRunner, WorkspaceManager } from "../node.js";
 
 const now = "2026-05-10T00:00:00.000Z";
 

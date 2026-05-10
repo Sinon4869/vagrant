@@ -1,3 +1,4 @@
+import { RuntimeKind, createProject, createRepositoryConfig } from "./domain.js";
 import { aggregateIssueTree } from "./issue-tree.js";
 import { planIssueTree } from "./rule-planner.js";
 
@@ -30,5 +31,48 @@ export function createDemoProject() {
         body: "The deterministic planner created a full-stack issue tree."
       }
     ]
+  };
+}
+
+export interface CreatePersistedDemoStateInput {
+  repositoryLocalPath: string;
+  repositoryRemoteUrl: string | null;
+  now?: string;
+}
+
+export function createPersistedDemoState(input: CreatePersistedDemoStateInput) {
+  const now = input.now ?? DEMO_NOW;
+  const project = createProject({
+    id: "project-vagrant",
+    name: "vagrant",
+    description: "Local-first multi-agent engineering management platform.",
+    now
+  });
+  const repository = createRepositoryConfig({
+    id: "repo-vagrant",
+    projectId: project.id,
+    name: "vagrant",
+    localPath: input.repositoryLocalPath,
+    remoteUrl: input.repositoryRemoteUrl,
+    providerType: input.repositoryRemoteUrl ? "generic_git" : "local_only",
+    defaultBaseBranch: "main",
+    branchNamePrefix: "vagrant",
+    now
+  });
+  const rootIssue = planIssueTree({
+    projectId: project.id,
+    rootIssueId: "issue-vagrant-knowledge",
+    title: "Build agent knowledge wiki",
+    description: "Create a Markdown wiki with structured indexes for agent context and delivery evidence.",
+    complexity: "large",
+    area: "full_stack",
+    now
+  });
+
+  return {
+    project,
+    repository,
+    rootIssue,
+    defaultRuntimeKind: RuntimeKind.CodexCli
   };
 }

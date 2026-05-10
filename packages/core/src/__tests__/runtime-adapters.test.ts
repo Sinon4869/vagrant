@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { IssueType, createIssue } from "../domain.js";
-import { FakeProcessRunner } from "../process-runner.js";
-import { ClaudeCliRuntimeAdapter, CodexCliRuntimeAdapter } from "../runtime-adapters.js";
+import { ClaudeCliRuntimeAdapter, CodexCliRuntimeAdapter, FakeProcessRunner } from "../node.js";
 
 const issue = createIssue({
   id: "issue-frontend",
