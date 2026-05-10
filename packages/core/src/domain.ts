@@ -311,6 +311,45 @@ export function createNotificationItem(input: CreateNotificationItemInput): Noti
   };
 }
 
+export interface KnowledgePage {
+  id: string;
+  projectId: string;
+  title: string;
+  body: string;
+  tags: string[];
+  linkedRequirementIds: string[];
+  linkedRepositoryIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateKnowledgePageInput {
+  id: string;
+  projectId: string;
+  title: string;
+  body?: string;
+  tags?: string[];
+  linkedRequirementIds?: string[];
+  linkedRepositoryIds?: string[];
+  now?: string;
+}
+
+export function createKnowledgePage(input: CreateKnowledgePageInput): KnowledgePage {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    title: input.title,
+    body: input.body ?? "",
+    tags: input.tags ?? [],
+    linkedRequirementIds: input.linkedRequirementIds ?? [],
+    linkedRepositoryIds: input.linkedRepositoryIds ?? [],
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 export interface CreateAgentRunInput {
   id: string;
   projectId: string;

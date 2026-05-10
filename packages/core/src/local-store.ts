@@ -4,6 +4,7 @@ import {
   type AgentRun,
   type Evidence,
   type Issue,
+  type KnowledgePage,
   type NotificationItem,
   type Project,
   type RepositoryConfig
@@ -21,6 +22,7 @@ export interface LocalWorkspaceState {
   rootIssues: Issue[];
   agentRuns: AgentRun[];
   notifications: NotificationItem[];
+  knowledgePages: KnowledgePage[];
   evidence: Evidence[];
   dispatchKeys: string[];
 }
@@ -32,6 +34,7 @@ const emptyState: LocalWorkspaceState = {
   rootIssues: [],
   agentRuns: [],
   notifications: [],
+  knowledgePages: [],
   evidence: [],
   dispatchKeys: []
 };
@@ -131,6 +134,20 @@ export class LocalStore implements WorkspaceStore {
     }));
   }
 
+  async listKnowledgePages(projectId: string): Promise<KnowledgePage[]> {
+    const state = await this.readState();
+    return state.knowledgePages
+      .filter((page) => page.projectId === projectId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async upsertKnowledgePage(page: KnowledgePage): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      knowledgePages: upsertById(state.knowledgePages, page)
+    }));
+  }
+
   async appendEvidence(evidence: Evidence[]): Promise<void> {
     await this.updateState((state) => ({
       ...state,
@@ -169,7 +186,8 @@ export class LocalStore implements WorkspaceStore {
     return {
       ...emptyState,
       ...state,
-      notifications: state.notifications ?? []
+      notifications: state.notifications ?? [],
+      knowledgePages: state.knowledgePages ?? []
     };
   }
 

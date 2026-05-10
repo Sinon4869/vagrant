@@ -1,4 +1,10 @@
-import { RuntimeKind, createNotificationItem, createProject, createRepositoryConfig } from "./domain.js";
+import {
+  RuntimeKind,
+  createKnowledgePage,
+  createNotificationItem,
+  createProject,
+  createRepositoryConfig
+} from "./domain.js";
 import { aggregateIssueTree } from "./issue-tree.js";
 import { planIssueTree } from "./rule-planner.js";
 
@@ -81,12 +87,35 @@ export function createPersistedDemoState(input: CreatePersistedDemoStateInput) {
     dedupeKey: `${project.id}:${rootIssue.id}:digest:issue-tree-ready`,
     now
   });
+  const knowledgePages = [
+    createKnowledgePage({
+      id: "wiki-agent-context",
+      projectId: project.id,
+      title: "Agent operating context",
+      body: "Shared project context for local Codex CLI and Claude CLI agents.",
+      tags: ["agents", "manual"],
+      linkedRequirementIds: [rootIssue.id],
+      linkedRepositoryIds: [repository.id],
+      now
+    }),
+    createKnowledgePage({
+      id: "wiki-runtime-policy",
+      projectId: project.id,
+      title: "Codex and Claude runtime policy",
+      body: "Runtime selection, approval gates, and local worktree expectations.",
+      tags: ["runtime", "approval"],
+      linkedRequirementIds: [rootIssue.id],
+      linkedRepositoryIds: [repository.id],
+      now
+    })
+  ];
 
   return {
     project,
     repository,
     rootIssue,
     notification,
+    knowledgePages,
     defaultRuntimeKind: RuntimeKind.CodexCli
   };
 }

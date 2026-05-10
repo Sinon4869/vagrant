@@ -5,6 +5,7 @@ import {
   RuntimeKind,
   createAgentRun,
   createIssue,
+  createKnowledgePage,
   createNotificationItem,
   createProject,
   createRepositoryConfig
@@ -61,6 +62,16 @@ describeIfDatabase("PostgresStore", () => {
       emailSentAt: now,
       now
     });
+    const knowledgePage = createKnowledgePage({
+      id: `wiki-${suffix}`,
+      projectId: project.id,
+      title: "Runtime policy",
+      body: "Codex CLI is the default engineering runtime.",
+      tags: ["runtime", "codex"],
+      linkedRequirementIds: [rootIssue.id],
+      linkedRepositoryIds: [repository.id],
+      now
+    });
     const dispatchKey = `${rootIssue.id}:${rootIssue.id}:backend_developer:event-1:run`;
 
     await store.upsertProject(project);
@@ -68,6 +79,7 @@ describeIfDatabase("PostgresStore", () => {
     await store.upsertRootIssue(rootIssue);
     await store.upsertAgentRun(run);
     await store.upsertNotification(notification);
+    await store.upsertKnowledgePage(knowledgePage);
     await store.addDispatchKey(dispatchKey);
 
     expect(await store.getProject(project.id)).toEqual(project);
@@ -77,6 +89,7 @@ describeIfDatabase("PostgresStore", () => {
     expect(await store.listAgentRuns(rootIssue.id)).toEqual([run]);
     expect(await store.listProjectAgentRuns(project.id)).toEqual([run]);
     expect(await store.listNotifications(project.id)).toEqual([notification]);
+    expect(await store.listKnowledgePages(project.id)).toEqual([knowledgePage]);
     expect(await store.hasDispatchKey(dispatchKey)).toBe(true);
   });
 });

@@ -5,6 +5,7 @@ import {
   RuntimeKind,
   createAgentRun,
   createIssue,
+  createKnowledgePage,
   createNotificationItem,
   createProject,
   createRepositoryConfig
@@ -60,12 +61,23 @@ describe("LocalStore", () => {
         emailSentAt: now,
         now
       });
+      const knowledgePage = createKnowledgePage({
+        id: "wiki-runtime-policy",
+        projectId: project.id,
+        title: "Runtime policy",
+        body: "Codex CLI is the default engineering runtime.",
+        tags: ["runtime", "codex"],
+        linkedRequirementIds: [rootIssue.id],
+        linkedRepositoryIds: [repository.id],
+        now
+      });
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
       await store.upsertRootIssue(rootIssue);
       await store.upsertAgentRun(run);
       await store.upsertNotification(notification);
+      await store.upsertKnowledgePage(knowledgePage);
       await store.addDispatchKey("issue-root:issue-root:backend_developer:event-1:run");
 
       const reloaded = new LocalStore({ runtimeDir });
@@ -78,6 +90,7 @@ describe("LocalStore", () => {
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
       expect(await reloaded.listNotifications(project.id)).toEqual([notification]);
+      expect(await reloaded.listKnowledgePages(project.id)).toEqual([knowledgePage]);
       expect(await reloaded.hasDispatchKey("issue-root:issue-root:backend_developer:event-1:run")).toBe(true);
     });
   });

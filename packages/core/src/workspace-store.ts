@@ -2,6 +2,7 @@ import {
   type AgentRun,
   type Evidence,
   type Issue,
+  type KnowledgePage,
   type NotificationItem,
   type Project,
   type RepositoryConfig
@@ -21,6 +22,8 @@ export interface WorkspaceStore {
   upsertAgentRun(run: AgentRun): Promise<void>;
   listNotifications(projectId: string): Promise<NotificationItem[]>;
   upsertNotification(notification: NotificationItem): Promise<void>;
+  listKnowledgePages(projectId: string): Promise<KnowledgePage[]>;
+  upsertKnowledgePage(page: KnowledgePage): Promise<void>;
   appendEvidence(evidence: Evidence[]): Promise<void>;
   hasDispatchKey(dispatchKey: string): Promise<boolean>;
   listDispatchKeys(): Promise<Set<string>>;

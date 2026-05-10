@@ -8,7 +8,9 @@ import {
   AgentRole,
   RuntimeKind,
   type Issue,
+  type KnowledgePage,
   type NotificationItem,
+  type Project,
   type RepositoryConfig,
   type RepositoryProviderType,
   createPersistedDemoState
@@ -99,6 +101,41 @@ export interface InboxWorkspaceView {
     name: string;
   };
   inbox: InboxRow[];
+}
+
+export interface ProjectRow {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  requirements: number;
+  repositories: number;
+  agents: number;
+  progress: number;
+  updatedAt: string;
+}
+
+export interface ProjectsWorkspaceView {
+  projects: ProjectRow[];
+}
+
+export interface KnowledgePageRow {
+  id: string;
+  title: string;
+  tags: string[];
+  linkedRequirements: string[];
+  linkedRepositories: string[];
+  updatedAt: string;
+}
+
+export interface KnowledgeWorkspaceView {
+  project: {
+    id: string;
+    name: string;
+  };
+  knowledgePages: KnowledgePageRow[];
+  requirements: RequirementRow[];
+  repositories: RepositoryRow[];
 }
 
 export function getRuntimeDir(): string {
@@ -217,6 +254,45 @@ export async function getInboxWorkspaceView(): Promise<InboxWorkspaceView> {
   };
 }
 
+export async function getProjectsWorkspaceView(): Promise<ProjectsWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const project = await store.getProject(DEFAULT_PROJECT_ID);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+  }
+
+  const repositories = await store.listRepositories(project.id);
+  const rootIssues = await store.listRootIssues(project.id);
+
+  return {
+    projects: [toProjectRow(project, rootIssues, repositories)]
+  };
+}
+
+export async function getKnowledgeWorkspaceView(): Promise<KnowledgeWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const project = await store.getProject(DEFAULT_PROJECT_ID);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+  }
+
+  const repositories = await store.listRepositories(project.id);
+  const rootIssues = await store.listRootIssues(project.id);
+  const knowledgePages = await store.listKnowledgePages(project.id);
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name
+    },
+    knowledgePages: knowledgePages.map(toKnowledgePageRow),
+    requirements: rootIssues.map((issue) => toRequirementRow(issue, repositories)),
+    repositories: repositories.map((repository) => toRepositoryRow(repository, rootIssues.length))
+  };
+}
+
 async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
   const seed = createPersistedDemoState({
     repositoryLocalPath: process.cwd(),
@@ -228,6 +304,7 @@ async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
     const repositories = await store.listRepositories(DEFAULT_PROJECT_ID);
     const rootIssue = await store.getRootIssue(seed.rootIssue.id);
     const notifications = await store.listNotifications(DEFAULT_PROJECT_ID);
+    const knowledgePages = await store.listKnowledgePages(DEFAULT_PROJECT_ID);
 
     if (repositories.length === 0) {
       await store.upsertRepository(seed.repository);
@@ -241,6 +318,12 @@ async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
       await store.upsertNotification(seed.notification);
     }
 
+    for (const page of seed.knowledgePages) {
+      if (!knowledgePages.some((existing) => existing.id === page.id)) {
+        await store.upsertKnowledgePage(page);
+      }
+    }
+
     return;
   }
 
@@ -248,6 +331,9 @@ async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
   await store.upsertRepository(seed.repository);
   await store.upsertRootIssue(seed.rootIssue);
   await store.upsertNotification(seed.notification);
+  for (const page of seed.knowledgePages) {
+    await store.upsertKnowledgePage(page);
+  }
 }
 
 function toRepositoryRow(repository: RepositoryConfig, linkedRequirements: number): RepositoryRow {
@@ -308,6 +394,35 @@ function toInboxRow(notification: NotificationItem, rootIssues: Issue[]): InboxR
     severity: notification.severity === "high" ? "High" : "Normal",
     delivery: deliveryLabel(notification),
     updatedAt: notification.updatedAt
+  };
+}
+
+function toProjectRow(project: Project, rootIssues: Issue[], repositories: RepositoryConfig[]): ProjectRow {
+  const summaries = rootIssues.map(aggregateIssueTree);
+  const done = summaries.reduce((total, summary) => total + summary.counts.done, 0);
+  const nodes = summaries.reduce((total, summary) => total + summary.total, 0);
+
+  return {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    status: "Active",
+    requirements: rootIssues.length,
+    repositories: repositories.length,
+    agents: 14,
+    progress: nodes > 0 ? Math.round((done / nodes) * 100) : 0,
+    updatedAt: project.updatedAt
+  };
+}
+
+function toKnowledgePageRow(page: KnowledgePage): KnowledgePageRow {
+  return {
+    id: page.id,
+    title: page.title,
+    tags: page.tags,
+    linkedRequirements: page.linkedRequirementIds,
+    linkedRepositories: page.linkedRepositoryIds,
+    updatedAt: page.updatedAt
   };
 }
 

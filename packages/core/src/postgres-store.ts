@@ -3,6 +3,7 @@ import {
   type AgentRun,
   type Evidence,
   type Issue,
+  type KnowledgePage,
   type NotificationItem,
   type Project,
   type RepositoryConfig
@@ -94,6 +95,18 @@ export class PostgresStore implements WorkspaceStore {
         delivery text not null,
         dedupe_key text not null unique,
         email_sent_at timestamptz,
+        created_at timestamptz not null,
+        updated_at timestamptz not null
+      );
+
+      create table if not exists knowledge_pages (
+        id text primary key,
+        project_id text not null references projects(id) on delete cascade,
+        title text not null,
+        body text not null,
+        tags jsonb not null,
+        linked_requirement_ids jsonb not null,
+        linked_repository_ids jsonb not null,
         created_at timestamptz not null,
         updated_at timestamptz not null
       );
@@ -293,6 +306,43 @@ export class PostgresStore implements WorkspaceStore {
     );
   }
 
+  async listKnowledgePages(projectId: string): Promise<KnowledgePage[]> {
+    const result = await this.pool.query<KnowledgePageRow>(
+      "select * from knowledge_pages where project_id = $1 order by updated_at desc",
+      [projectId]
+    );
+    return result.rows.map(knowledgePageFromRow);
+  }
+
+  async upsertKnowledgePage(page: KnowledgePage): Promise<void> {
+    await this.pool.query(
+      `insert into knowledge_pages (
+        id, project_id, title, body, tags, linked_requirement_ids, linked_repository_ids,
+        created_at, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      on conflict (id) do update set
+        project_id = excluded.project_id,
+        title = excluded.title,
+        body = excluded.body,
+        tags = excluded.tags,
+        linked_requirement_ids = excluded.linked_requirement_ids,
+        linked_repository_ids = excluded.linked_repository_ids,
+        updated_at = excluded.updated_at`,
+      [
+        page.id,
+        page.projectId,
+        page.title,
+        page.body,
+        JSON.stringify(page.tags),
+        JSON.stringify(page.linkedRequirementIds),
+        JSON.stringify(page.linkedRepositoryIds),
+        page.createdAt,
+        page.updatedAt
+      ]
+    );
+  }
+
   async appendEvidence(evidence: Evidence[]): Promise<void> {
     for (const item of evidence) {
       await this.pool.query(
@@ -385,6 +435,18 @@ interface NotificationRow {
   updated_at: Date;
 }
 
+interface KnowledgePageRow {
+  id: string;
+  project_id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  linked_requirement_ids: string[];
+  linked_repository_ids: string[];
+  created_at: Date;
+  updated_at: Date;
+}
+
 function projectFromRow(row: ProjectRow): Project {
   return {
     id: row.id,
@@ -444,6 +506,20 @@ function notificationFromRow(row: NotificationRow): NotificationItem {
     delivery: row.delivery,
     dedupeKey: row.dedupe_key,
     emailSentAt: row.email_sent_at?.toISOString() ?? null,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  };
+}
+
+function knowledgePageFromRow(row: KnowledgePageRow): KnowledgePage {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    title: row.title,
+    body: row.body,
+    tags: row.tags,
+    linkedRequirementIds: row.linked_requirement_ids,
+    linkedRepositoryIds: row.linked_repository_ids,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString()
   };
