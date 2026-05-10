@@ -131,6 +131,26 @@ export interface DispatchAction {
   updatedAt: string;
 }
 
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "cancelled";
+export type ApprovalRisk = "medium" | "high" | "critical";
+
+export interface Approval {
+  id: string;
+  projectId: string;
+  rootIssueId: string;
+  issueId: string | null;
+  dispatchActionId: string | null;
+  status: ApprovalStatus;
+  risk: ApprovalRisk;
+  reason: string;
+  requestedBy: AgentRole | null;
+  decidedBy: string | null;
+  decisionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt: string | null;
+}
+
 export interface CreateIssueInput {
   id: string;
   projectId: string;

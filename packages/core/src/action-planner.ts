@@ -3,6 +3,7 @@ import {
   type DispatchAction,
   type Issue,
   type IssueRelation,
+  IssueType,
   IssueStatus
 } from "./domain.js";
 import { flattenIssueTree } from "./issue-tree.js";
@@ -42,7 +43,9 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
       continue;
     }
 
-    const idempotencyKey = createDispatchIdempotencyKey(input.root.id, issue, input.triggerEventId);
+    const approvalReason = approvalReasonForIssue(issue);
+    const actionKind = approvalReason ? "request_approval" : "start_agent_run";
+    const idempotencyKey = createDispatchIdempotencyKey(input.root.id, issue, input.triggerEventId, actionKind);
 
     if (previousDispatchKeys.has(idempotencyKey)) {
       continue;
@@ -53,12 +56,19 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
       projectId: issue.projectId,
       rootIssueId: input.root.id,
       issueId: issue.id,
-      kind: "start_agent_run",
+      kind: actionKind,
       status: "pending",
-      payload: {
-        agentRole: issue.ownerAgentRole ?? AgentRole.CEO,
-        issueType: issue.type
-      },
+      payload: approvalReason
+        ? {
+          risk: "high",
+          reason: approvalReason,
+          agentRole: issue.ownerAgentRole ?? AgentRole.CEO,
+          issueType: issue.type
+        }
+        : {
+          agentRole: issue.ownerAgentRole ?? AgentRole.CEO,
+          issueType: issue.type
+        },
       idempotencyKey,
       createdAt: now,
       updatedAt: now
@@ -79,6 +89,24 @@ function dependenciesAreDone(issue: Issue, relations: IssueRelation[], issueById
   return dependencies.every((relation) => issueById.get(relation.targetIssueId)?.status === IssueStatus.Done);
 }
 
-function createDispatchIdempotencyKey(rootIssueId: string, issue: Issue, triggerEventId: string): string {
-  return [rootIssueId, issue.id, issue.ownerAgentRole ?? "unassigned", triggerEventId, "run"].join(":");
+function createDispatchIdempotencyKey(
+  rootIssueId: string,
+  issue: Issue,
+  triggerEventId: string,
+  kind: DispatchAction["kind"]
+): string {
+  const suffix = kind === "request_approval" ? "approval" : "run";
+  return [rootIssueId, issue.id, issue.ownerAgentRole ?? "unassigned", triggerEventId, suffix].join(":");
+}
+
+function approvalReasonForIssue(issue: Issue): string | null {
+  if (issue.type === IssueType.Database) {
+    return "database_migration";
+  }
+
+  if (issue.type === IssueType.DevOps || issue.type === IssueType.Release) {
+    return "provider_or_environment_change";
+  }
+
+  return null;
 }

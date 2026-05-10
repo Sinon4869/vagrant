@@ -1,6 +1,7 @@
 import pg from "pg";
 import {
   type AgentRun,
+  type Approval,
   type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
@@ -78,6 +79,23 @@ export class PostgresStore implements WorkspaceStore {
         idempotency_key text not null unique,
         created_at timestamptz not null,
         updated_at timestamptz not null
+      );
+
+      create table if not exists approvals (
+        id text primary key,
+        project_id text not null references projects(id) on delete cascade,
+        root_issue_id text not null,
+        issue_id text,
+        dispatch_action_id text,
+        status text not null,
+        risk text not null,
+        reason text not null,
+        requested_by text,
+        decided_by text,
+        decision_note text,
+        created_at timestamptz not null,
+        updated_at timestamptz not null,
+        decided_at timestamptz
       );
 
       create table if not exists agent_runs (
@@ -323,6 +341,53 @@ export class PostgresStore implements WorkspaceStore {
         action.idempotencyKey,
         action.createdAt,
         action.updatedAt
+      ]
+    );
+  }
+
+  async listApprovals(projectId: string): Promise<Approval[]> {
+    const result = await this.pool.query<ApprovalRow>(
+      "select * from approvals where project_id = $1 order by updated_at desc",
+      [projectId]
+    );
+    return result.rows.map(approvalFromRow);
+  }
+
+  async upsertApproval(approval: Approval): Promise<void> {
+    await this.pool.query(
+      `insert into approvals (
+        id, project_id, root_issue_id, issue_id, dispatch_action_id, status, risk,
+        reason, requested_by, decided_by, decision_note, created_at, updated_at, decided_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      on conflict (id) do update set
+        project_id = excluded.project_id,
+        root_issue_id = excluded.root_issue_id,
+        issue_id = excluded.issue_id,
+        dispatch_action_id = excluded.dispatch_action_id,
+        status = excluded.status,
+        risk = excluded.risk,
+        reason = excluded.reason,
+        requested_by = excluded.requested_by,
+        decided_by = excluded.decided_by,
+        decision_note = excluded.decision_note,
+        updated_at = excluded.updated_at,
+        decided_at = excluded.decided_at`,
+      [
+        approval.id,
+        approval.projectId,
+        approval.rootIssueId,
+        approval.issueId,
+        approval.dispatchActionId,
+        approval.status,
+        approval.risk,
+        approval.reason,
+        approval.requestedBy,
+        approval.decidedBy,
+        approval.decisionNote,
+        approval.createdAt,
+        approval.updatedAt,
+        approval.decidedAt
       ]
     );
   }
@@ -612,6 +677,23 @@ interface DispatchActionRow {
   updated_at: Date;
 }
 
+interface ApprovalRow {
+  id: string;
+  project_id: string;
+  root_issue_id: string;
+  issue_id: string | null;
+  dispatch_action_id: string | null;
+  status: Approval["status"];
+  risk: Approval["risk"];
+  reason: string;
+  requested_by: Approval["requestedBy"];
+  decided_by: string | null;
+  decision_note: string | null;
+  created_at: Date;
+  updated_at: Date;
+  decided_at: Date | null;
+}
+
 interface NotificationRow {
   id: string;
   project_id: string;
@@ -725,6 +807,25 @@ function dispatchActionFromRow(row: DispatchActionRow): DispatchAction {
     idempotencyKey: row.idempotency_key,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString()
+  };
+}
+
+function approvalFromRow(row: ApprovalRow): Approval {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    rootIssueId: row.root_issue_id,
+    issueId: row.issue_id,
+    dispatchActionId: row.dispatch_action_id,
+    status: row.status,
+    risk: row.risk,
+    reason: row.reason,
+    requestedBy: row.requested_by,
+    decidedBy: row.decided_by,
+    decisionNote: row.decision_note,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
+    decidedAt: row.decided_at?.toISOString() ?? null
   };
 }
 

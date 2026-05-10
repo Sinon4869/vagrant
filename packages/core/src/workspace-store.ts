@@ -1,5 +1,6 @@
 import {
   type AgentRun,
+  type Approval,
   type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
@@ -25,6 +26,8 @@ export interface WorkspaceStore {
   upsertIssueRelation(relation: IssueRelation): Promise<void>;
   listDispatchActions(rootIssueId: string): Promise<DispatchAction[]>;
   upsertDispatchAction(action: DispatchAction): Promise<void>;
+  listApprovals(projectId: string): Promise<Approval[]>;
+  upsertApproval(approval: Approval): Promise<void>;
   listAgentRuns(rootIssueId: string): Promise<AgentRun[]>;
   listProjectAgentRuns(projectId: string): Promise<AgentRun[]>;
   upsertAgentRun(run: AgentRun): Promise<void>;

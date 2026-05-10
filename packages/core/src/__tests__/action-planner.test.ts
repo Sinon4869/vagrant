@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planReadyActions } from "../action-planner.js";
-import { type IssueRelation, IssueStatus } from "../domain.js";
+import { type IssueRelation, IssueStatus, IssueType } from "../domain.js";
 import { planIssueTree } from "../rule-planner.js";
 
 describe("planReadyActions", () => {
@@ -113,6 +113,42 @@ describe("planReadyActions", () => {
 
     expect(result.blockedIssueIds).toEqual([first.id]);
     expect(result.actions).toEqual([]);
+  });
+
+  it("plans approval actions for high risk issue types before starting an agent run", () => {
+    const root = planIssueTree({
+      projectId: "project-1",
+      rootIssueId: "root-1",
+      title: "Run database migration",
+      description: "Change schema",
+      complexity: "medium",
+      area: "backend",
+      now: "2026-05-10T00:00:00.000Z"
+    });
+    const databaseIssue = {
+      ...root.children[0]!,
+      type: IssueType.Database
+    };
+
+    const result = planReadyActions({
+      root: {
+        ...root,
+        children: [databaseIssue]
+      },
+      triggerEventId: "event-1",
+      now: "2026-05-10T00:00:00.000Z"
+    });
+
+    expect(result.actions).toEqual([
+      expect.objectContaining({
+        issueId: databaseIssue.id,
+        kind: "request_approval",
+        payload: expect.objectContaining({
+          risk: "high",
+          reason: "database_migration"
+        })
+      })
+    ]);
   });
 });
 

@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   type AgentRun,
+  type Approval,
   type DispatchAction,
   type EmailOutboxItem,
   type Evidence,
@@ -25,6 +26,7 @@ export interface LocalWorkspaceState {
   rootIssues: Issue[];
   issueRelations: IssueRelation[];
   dispatchActions: DispatchAction[];
+  approvals: Approval[];
   agentRuns: AgentRun[];
   notifications: NotificationItem[];
   emailOutbox: EmailOutboxItem[];
@@ -40,6 +42,7 @@ const emptyState: LocalWorkspaceState = {
   rootIssues: [],
   issueRelations: [],
   dispatchActions: [],
+  approvals: [],
   agentRuns: [],
   notifications: [],
   emailOutbox: [],
@@ -139,6 +142,20 @@ export class LocalStore implements WorkspaceStore {
     await this.updateState((state) => ({
       ...state,
       dispatchActions: upsertById(state.dispatchActions, action)
+    }));
+  }
+
+  async listApprovals(projectId: string): Promise<Approval[]> {
+    const state = await this.readState();
+    return state.approvals
+      .filter((approval) => approval.projectId === projectId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async upsertApproval(approval: Approval): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      approvals: upsertById(state.approvals, approval)
     }));
   }
 
@@ -248,6 +265,7 @@ export class LocalStore implements WorkspaceStore {
       notifications: state.notifications ?? [],
       issueRelations: state.issueRelations ?? [],
       dispatchActions: state.dispatchActions ?? [],
+      approvals: state.approvals ?? [],
       emailOutbox: state.emailOutbox ?? [],
       knowledgePages: state.knowledgePages ?? []
     };

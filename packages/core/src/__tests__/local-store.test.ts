@@ -103,12 +103,29 @@ describe("LocalStore", () => {
         createdAt: now,
         updatedAt: now
       };
+      const approval = {
+        id: "approval-1",
+        projectId: project.id,
+        rootIssueId: rootIssue.id,
+        issueId: rootIssue.id,
+        dispatchActionId: dispatchAction.id,
+        status: "pending" as const,
+        risk: "high" as const,
+        reason: "database_migration",
+        requestedBy: AgentRole.Database,
+        decidedBy: null,
+        decisionNote: null,
+        createdAt: now,
+        updatedAt: now,
+        decidedAt: null
+      };
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
       await store.upsertRootIssue(rootIssue);
       await store.upsertIssueRelation(relation);
       await store.upsertDispatchAction(dispatchAction);
+      await store.upsertApproval(approval);
       await store.upsertAgentRun(run);
       await store.upsertNotification(notification);
       await store.upsertEmailOutboxItem(email);
@@ -125,6 +142,7 @@ describe("LocalStore", () => {
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
       expect(await reloaded.listIssueRelations(rootIssue.id)).toEqual([relation]);
       expect(await reloaded.listDispatchActions(rootIssue.id)).toEqual([dispatchAction]);
+      expect(await reloaded.listApprovals(project.id)).toEqual([approval]);
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
       expect(await reloaded.listNotifications(project.id)).toEqual([notification]);

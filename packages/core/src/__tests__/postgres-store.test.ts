@@ -105,12 +105,29 @@ describeIfDatabase("PostgresStore", () => {
       createdAt: now,
       updatedAt: now
     };
+    const approval = {
+      id: `approval-${suffix}`,
+      projectId: project.id,
+      rootIssueId: rootIssue.id,
+      issueId: rootIssue.id,
+      dispatchActionId: dispatchAction.id,
+      status: "pending" as const,
+      risk: "high" as const,
+      reason: "database_migration",
+      requestedBy: AgentRole.Database,
+      decidedBy: null,
+      decisionNote: null,
+      createdAt: now,
+      updatedAt: now,
+      decidedAt: null
+    };
 
     await store.upsertProject(project);
     await store.upsertRepository(repository);
     await store.upsertRootIssue(rootIssue);
     await store.upsertIssueRelation(relation);
     await store.upsertDispatchAction(dispatchAction);
+    await store.upsertApproval(approval);
     await store.upsertAgentRun(run);
     await store.upsertNotification(notification);
     await store.upsertEmailOutboxItem(email);
@@ -124,6 +141,7 @@ describeIfDatabase("PostgresStore", () => {
     expect(await store.getRootIssue(rootIssue.id)).toEqual(rootIssue);
     expect(await store.listIssueRelations(rootIssue.id)).toEqual([relation]);
     expect(await store.listDispatchActions(rootIssue.id)).toEqual([dispatchAction]);
+    expect(await store.listApprovals(project.id)).toEqual([approval]);
     expect(await store.listAgentRuns(rootIssue.id)).toEqual([run]);
     expect(await store.listProjectAgentRuns(project.id)).toEqual([run]);
     expect(await store.listNotifications(project.id)).toEqual([notification]);
