@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AgentRole, IssueType } from "../domain.js";
 import {
+  planIssueRelations,
   planIssueTree,
   type PlanIssueTreeInput
 } from "../rule-planner.js";
@@ -145,6 +146,30 @@ describe("rule planner", () => {
     const second = planIssueTree(input);
 
     expect(timestamps(first)).toEqual(timestamps(second));
+  });
+
+  it("plans executable dependencies for a full-stack delivery flow", () => {
+    const root = planIssueTree(baseInput({
+      rootIssueId: "root-dag",
+      complexity: "large",
+      area: "full_stack"
+    }));
+
+    const relations = planIssueRelations(root);
+
+    expect(relations.map((relation) => [
+      relation.sourceIssueId,
+      relation.targetIssueId,
+      relation.kind
+    ])).toEqual([
+      ["root-dag-technical-plan", "root-dag-product", "depends_on"],
+      ["root-dag-frontend", "root-dag-technical-plan", "depends_on"],
+      ["root-dag-backend", "root-dag-technical-plan", "depends_on"],
+      ["root-dag-review", "root-dag-frontend", "depends_on"],
+      ["root-dag-review", "root-dag-backend", "depends_on"],
+      ["root-dag-qa", "root-dag-review", "depends_on"],
+      ["root-dag-docs", "root-dag-qa", "depends_on"]
+    ]);
   });
 });
 

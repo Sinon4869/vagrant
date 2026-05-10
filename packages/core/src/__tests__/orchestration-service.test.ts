@@ -44,6 +44,47 @@ describe("orchestration service", () => {
     });
   });
 
+  it("uses persisted issue relations to hold downstream work until dependencies complete", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const root = planIssueTree({
+        projectId: project.id,
+        rootIssueId: "root-1",
+        title: "Build settings module",
+        description: "Add settings UI and API",
+        complexity: "large",
+        area: "full_stack",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      await store.upsertProject(project);
+      await store.upsertRootIssue(root);
+      await store.upsertIssueRelation({
+        id: "root-1-review-depends-on-root-1-frontend",
+        projectId: project.id,
+        rootIssueId: root.id,
+        sourceIssueId: "root-1-review",
+        targetIssueId: "root-1-frontend",
+        kind: "depends_on",
+        createdAt: "2026-05-10T00:00:00.000Z"
+      });
+
+      const result = await scanReadyDispatchActions({
+        store,
+        rootIssueId: root.id,
+        triggerEventId: "event-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+
+      expect(result.actions.map((action) => action.issueId)).not.toContain("root-1-review");
+    });
+  });
+
   it("creates a pending approval when persisting an approval dispatch action", async () => {
     await withTempRuntimeDir(async (runtimeDir) => {
       const store = new LocalStore({ runtimeDir });

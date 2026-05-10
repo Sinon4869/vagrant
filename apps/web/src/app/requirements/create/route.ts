@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   type RequirementArea,
   type RequirementComplexity,
+  planIssueRelations,
   planIssueTree
 } from "@vagrant/core";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
@@ -31,6 +32,9 @@ export async function POST(request: NextRequest) {
   });
 
   await store.upsertRootIssue(rootIssue);
+  for (const relation of planIssueRelations(rootIssue)) {
+    await store.upsertIssueRelation(relation);
+  }
 
   return NextResponse.redirect(new URL(`/issues/${rootIssue.id}`, request.url), 303);
 }

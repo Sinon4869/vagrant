@@ -1,4 +1,4 @@
-import { AgentRole, createIssue, type Issue, IssueType } from "./domain.js";
+import { AgentRole, createIssue, type Issue, type IssueRelation, IssueType } from "./domain.js";
 
 export type RequirementComplexity = "small" | "medium" | "large";
 export type RequirementArea = "frontend" | "backend" | "full_stack" | "devops" | "documentation";
@@ -53,6 +53,70 @@ export function planIssueTree(input: PlanIssueTreeInput): Issue {
         now
       })
     )
+  };
+}
+
+export function planIssueRelations(root: Issue): IssueRelation[] {
+  const byType = new Map(root.children.map((issue) => [issue.type, issue]));
+  const relations: IssueRelation[] = [];
+  const product = byType.get(IssueType.Product);
+  const technicalPlan = byType.get(IssueType.TechnicalPlan);
+  const implementationIssues = root.children.filter((issue) =>
+    issue.type === IssueType.Frontend ||
+    issue.type === IssueType.Backend ||
+    issue.type === IssueType.Database ||
+    issue.type === IssueType.DevOps
+  );
+  const review = byType.get(IssueType.Review);
+  const qa = byType.get(IssueType.QA);
+  const docs = byType.get(IssueType.Documentation);
+
+  if (technicalPlan && product) {
+    relations.push(dependsOn(root, technicalPlan.id, product.id));
+  }
+
+  for (const issue of implementationIssues) {
+    if (technicalPlan) {
+      relations.push(dependsOn(root, issue.id, technicalPlan.id));
+    } else if (product) {
+      relations.push(dependsOn(root, issue.id, product.id));
+    }
+  }
+
+  if (review) {
+    const reviewDependencies = implementationIssues.length > 0
+      ? implementationIssues
+      : root.children.filter((issue) => issue.id !== review.id && issue.type !== IssueType.Documentation);
+
+    for (const issue of reviewDependencies) {
+      relations.push(dependsOn(root, review.id, issue.id));
+    }
+  }
+
+  if (qa && review) {
+    relations.push(dependsOn(root, qa.id, review.id));
+  }
+
+  if (docs) {
+    const docsDependency = qa ?? review;
+
+    if (docsDependency) {
+      relations.push(dependsOn(root, docs.id, docsDependency.id));
+    }
+  }
+
+  return relations;
+}
+
+function dependsOn(root: Issue, sourceIssueId: string, targetIssueId: string): IssueRelation {
+  return {
+    id: `${sourceIssueId}-depends-on-${targetIssueId}`,
+    projectId: root.projectId,
+    rootIssueId: root.id,
+    sourceIssueId,
+    targetIssueId,
+    kind: "depends_on",
+    createdAt: root.createdAt
   };
 }
 
