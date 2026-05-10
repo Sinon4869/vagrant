@@ -2007,6 +2007,7 @@ Write `apps/web/src/app/issues/[issueId]/page.tsx`:
 
 ```tsx
 import { aggregateIssueTree } from "@vagrant/core";
+import { notFound } from "next/navigation";
 import { Card, Col, Flex, Row, Space, Typography } from "antd";
 import { ActivityTimeline } from "@/components/activity-timeline";
 import { EvidenceList } from "@/components/evidence-list";
@@ -2017,8 +2018,18 @@ import { getDemoData } from "@/lib/demo-data";
 
 const { Paragraph, Text, Title } = Typography;
 
-export default function RootIssuePage() {
+type RootIssuePageProps = {
+  params: Promise<{ issueId: string }>;
+};
+
+export default async function RootIssuePage({ params }: RootIssuePageProps) {
+  const { issueId } = await params;
   const { project, rootIssue } = getDemoData();
+
+  if (issueId !== rootIssue.id) {
+    notFound();
+  }
+
   const summary = aggregateIssueTree(rootIssue);
 
   return (
