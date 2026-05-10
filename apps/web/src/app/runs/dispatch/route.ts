@@ -1,14 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { MockProviderAdapter, MockRuntimeAdapter, RuntimeKind, type RuntimeAdapter } from "@vagrant/core";
+import { RuntimeKind } from "@vagrant/core";
 import {
-  ClaudeCliRuntimeAdapter,
-  CodexCliRuntimeAdapter,
   NodeProcessRunner,
   WorkspaceManager,
   executeDispatchAction,
   scanReadyDispatchActions
 } from "@vagrant/core/node";
 import { assertRootIssueProject } from "@/lib/route-guards";
+import { createProviderAdapter, createRuntimeAdapter, readRuntimeKindValue } from "@/lib/runtime-adapters";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
 export async function POST(request: NextRequest) {
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
       actionId: startAction.id,
       runtimeKind,
       runtime,
-      provider: new MockProviderAdapter(),
+      provider: createProviderAdapter(),
       workingDirectory: runtimeKind === RuntimeKind.Mock
         ? `/mock/workspaces/${rootIssueId}`
         : await prepareWorkspace({
@@ -117,28 +116,5 @@ function readOptionalString(formData: FormData, key: string): string | null {
 
 function readRuntimeKind(formData: FormData): RuntimeKind {
   const value = readRequiredString(formData, "runtimeKind");
-
-  if (value === RuntimeKind.Mock || value === RuntimeKind.CodexCli || value === RuntimeKind.ClaudeCli) {
-    return value;
-  }
-
-  throw new Error(`Unsupported runtime: ${value}`);
-}
-
-function createRuntimeAdapter(runtimeKind: RuntimeKind, runner: NodeProcessRunner): RuntimeAdapter {
-  if (runtimeKind === RuntimeKind.CodexCli) {
-    return new CodexCliRuntimeAdapter({
-      runner,
-      binary: process.env.CODEX_CLI_BINARY ?? "codex"
-    });
-  }
-
-  if (runtimeKind === RuntimeKind.ClaudeCli) {
-    return new ClaudeCliRuntimeAdapter({
-      runner,
-      binary: process.env.CLAUDE_CLI_BINARY ?? "claude"
-    });
-  }
-
-  return new MockRuntimeAdapter();
+  return readRuntimeKindValue(value);
 }

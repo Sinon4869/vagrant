@@ -1,6 +1,6 @@
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { type RepositoryConfig } from "./domain.js";
-import { type ProcessRunner } from "./process-runner.js";
+import { type ProcessRunner, type ProcessRunResult } from "./process-runner.js";
 
 export interface WorkspaceManagerOptions {
   runner: ProcessRunner;
@@ -26,15 +26,17 @@ export class WorkspaceManager {
     const branchName = `${input.repository.branchNamePrefix}/${input.rootIssueId}`;
     const workingDirectory = join(this.options.worktreesDir, input.rootIssueId);
 
-    await this.runGit(input.repository.localPath, ["fetch", "--all", "--prune"]);
-    await this.runGit(input.repository.localPath, [
-      "worktree",
-      "add",
-      "-B",
-      branchName,
-      workingDirectory,
-      input.repository.defaultBaseBranch
-    ]);
+    await this.fetchRepository(input.repository);
+    if (!(await this.hasWorktree(input.repository.localPath, workingDirectory))) {
+      await this.runGit(input.repository.localPath, [
+        "worktree",
+        "add",
+        "-B",
+        branchName,
+        workingDirectory,
+        input.repository.defaultBaseBranch
+      ]);
+    }
 
     return {
       repositoryId: input.repository.id,
@@ -44,15 +46,51 @@ export class WorkspaceManager {
     };
   }
 
-  private async runGit(repositoryPath: string, args: string[]): Promise<void> {
+  private async fetchRepository(repository: RepositoryConfig): Promise<void> {
+    const result = await this.runGit(repository.localPath, ["fetch", "--all", "--prune"], {
+      throwOnError: false
+    });
+
+    if (result.exitCode === 0 || !repository.remoteUrl) {
+      return;
+    }
+
+    throw new Error(`git fetch --all --prune failed: ${result.stderr || result.stdout}`);
+  }
+
+  private async hasWorktree(repositoryPath: string, workingDirectory: string): Promise<boolean> {
+    const result = await this.runGit(repositoryPath, ["worktree", "list", "--porcelain"], {
+      throwOnError: false
+    });
+
+    if (result.exitCode !== 0) {
+      throw new Error(`git worktree list --porcelain failed: ${result.stderr || result.stdout}`);
+    }
+
+    const expectedPath = resolve(workingDirectory);
+    const worktrees = result.stdout
+      .split("\n")
+      .filter((line) => line.startsWith("worktree "))
+      .map((line) => resolve(line.slice("worktree ".length)));
+
+    return worktrees.includes(expectedPath);
+  }
+
+  private async runGit(
+    repositoryPath: string,
+    args: string[],
+    options: { throwOnError?: boolean } = {}
+  ): Promise<ProcessRunResult> {
     const result = await this.options.runner.run({
       command: "git",
       args: ["-C", repositoryPath, ...args],
       cwd: repositoryPath
     });
 
-    if (result.exitCode !== 0) {
+    if ((options.throwOnError ?? true) && result.exitCode !== 0) {
       throw new Error(`git ${args.join(" ")} failed: ${result.stderr || result.stdout}`);
     }
+
+    return result;
   }
 }

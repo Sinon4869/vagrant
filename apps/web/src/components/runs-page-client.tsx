@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CodeOutlined, FilterOutlined, PlayCircleOutlined } from "@ant-design/icons";
+import { CodeOutlined, FilterOutlined, PlayCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { Button, Card, Flex, Form, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
@@ -14,6 +14,10 @@ const { Text } = Typography;
 export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [runtimeFilter, setRuntimeFilter] = useState("all");
+  const [tickRuntimeKind, setTickRuntimeKind] = useState("mock");
+  const [dispatchRootIssueId, setDispatchRootIssueId] = useState(view.requirements[0]?.id ?? "");
+  const [dispatchRepositoryId, setDispatchRepositoryId] = useState(view.repositories[0]?.id ?? "");
+  const [dispatchRuntimeKind, setDispatchRuntimeKind] = useState("mock");
   const filteredRuns = useMemo(
     () =>
       view.runs.filter((run) => {
@@ -68,37 +72,50 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
       />
 
       <Card title="Dispatch ready issue" extra={<PlayCircleOutlined />}>
-        <Form action="/runs/dispatch" method="post" layout="vertical" className="run-dispatch-form">
-          <input type="hidden" name="projectId" value={view.project.id} />
-          <Form.Item label="Root requirement" name="rootIssueId" rules={[{ required: true }]}>
-            <Select
-              options={view.requirements.map((requirement) => ({
-                label: requirement.title,
-                value: requirement.id
-              }))}
-            />
-          </Form.Item>
-          <Form.Item label="Repository" name="repositoryId" initialValue={view.repositories[0]?.id} rules={[{ required: true }]}>
-            <Select
-              options={view.repositories.map((repository) => ({
-                label: repository.name,
-                value: repository.id
-              }))}
-            />
-          </Form.Item>
-          <Form.Item label="Runtime" name="runtimeKind" initialValue="mock" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { label: "Mock Runtime", value: "mock" },
-                { label: "Codex CLI", value: "codex_cli" },
-                { label: "Claude CLI", value: "claude_cli" }
-              ]}
-            />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" icon={<PlayCircleOutlined />}>
-            Dispatch run
-          </Button>
-        </Form>
+        <Flex gap={24} wrap align="flex-start">
+          <Form action="/runs/tick" method="post" layout="vertical" className="run-dispatch-form">
+            <input type="hidden" name="projectId" value={view.project.id} />
+            <input type="hidden" name="runtimeKind" value={tickRuntimeKind} />
+            <Form.Item label="Runtime" required>
+              <Select value={tickRuntimeKind} options={[runtimeKindOptions[0]!]} onChange={setTickRuntimeKind} />
+            </Form.Item>
+            <Button type="primary" htmlType="submit" icon={<ThunderboltOutlined />}>
+              Run orchestration tick
+            </Button>
+          </Form>
+          <Form action="/runs/dispatch" method="post" layout="vertical" className="run-dispatch-form">
+            <input type="hidden" name="projectId" value={view.project.id} />
+            <input type="hidden" name="rootIssueId" value={dispatchRootIssueId} />
+            <input type="hidden" name="repositoryId" value={dispatchRepositoryId} />
+            <input type="hidden" name="runtimeKind" value={dispatchRuntimeKind} />
+            <Form.Item label="Root requirement" required>
+              <Select
+                value={dispatchRootIssueId}
+                onChange={setDispatchRootIssueId}
+                options={view.requirements.map((requirement) => ({
+                  label: requirement.title,
+                  value: requirement.id
+                }))}
+              />
+            </Form.Item>
+            <Form.Item label="Repository" required>
+              <Select
+                value={dispatchRepositoryId}
+                onChange={setDispatchRepositoryId}
+                options={view.repositories.map((repository) => ({
+                  label: repository.name,
+                  value: repository.id
+                }))}
+              />
+            </Form.Item>
+            <Form.Item label="Runtime" required>
+              <Select value={dispatchRuntimeKind} options={runtimeKindOptions} onChange={setDispatchRuntimeKind} />
+            </Form.Item>
+            <Button htmlType="submit" icon={<PlayCircleOutlined />}>
+              Dispatch selected root
+            </Button>
+          </Form>
+        </Flex>
       </Card>
 
       <section className="queue-toolbar">
@@ -142,3 +159,9 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
     </Space>
   );
 }
+
+const runtimeKindOptions = [
+  { label: "Mock Runtime", value: "mock" },
+  { label: "Codex CLI", value: "codex_cli" },
+  { label: "Claude CLI", value: "claude_cli" }
+];
