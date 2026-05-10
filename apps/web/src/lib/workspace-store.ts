@@ -18,7 +18,9 @@ import {
   type RepositoryProviderType,
   createEmailOutboxItem,
   createPersistedDemoState,
-  planEmailNotifications
+  planEmailNotifications,
+  sendQueuedEmailOutbox,
+  type EmailTransportKind
 } from "@vagrant/core";
 import { LocalStore, PostgresStore, type WorkspaceStore } from "@vagrant/core/node";
 
@@ -108,6 +110,8 @@ export interface EmailOutboxRow {
   delivery: "Immediate" | "Digest";
   notifications: number;
   dedupeKey: string;
+  status: string;
+  sentAt: string | null;
 }
 
 export interface InboxWorkspaceView {
@@ -356,9 +360,27 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
       subject: item.subject,
       delivery: item.delivery === "immediate" ? "Immediate" : "Digest",
       notifications: item.notificationIds.length,
-      dedupeKey: item.dedupeKey
+      dedupeKey: item.dedupeKey,
+      status: item.status,
+      sentAt: item.sentAt ? formatDateTime(item.sentAt) : null
     }))
   };
+}
+
+export async function sendProjectEmailOutbox(projectId = DEFAULT_PROJECT_ID): Promise<void> {
+  const store = await getWorkspaceStore();
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
+  }
+
+  await sendQueuedEmailOutbox({
+    store,
+    projectId: project.id,
+    transport: resolveEmailTransport()
+  });
 }
 
 export async function getProjectsWorkspaceView(): Promise<ProjectsWorkspaceView> {
@@ -772,4 +794,8 @@ export function providerLabel(providerType: RepositoryProviderType): string {
   };
 
   return labels[providerType];
+}
+
+function resolveEmailTransport(): EmailTransportKind {
+  return process.env.VAGRANT_EMAIL_TRANSPORT === "disabled" ? "disabled" : "log";
 }

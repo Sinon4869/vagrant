@@ -1,7 +1,7 @@
 "use client";
 
 import { BellOutlined, MailOutlined } from "@ant-design/icons";
-import { Card, List, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Flex, List, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
 import { type EmailOutboxRow, type InboxWorkspaceView } from "@/lib/workspace-store";
@@ -18,6 +18,18 @@ export function InboxPageClient({ view }: { view: InboxWorkspaceView }) {
       render: (delivery) => <Tag color={delivery === "Immediate" ? "warning" : "blue"}>{delivery}</Tag>
     },
     { title: "Items", dataIndex: "notifications", width: 90 },
+    {
+      title: "Status",
+      dataIndex: "status",
+      width: 100,
+      render: (status) => <Tag color={status === "sent" ? "success" : status === "failed" ? "error" : "default"}>{status}</Tag>
+    },
+    {
+      title: "Sent",
+      dataIndex: "sentAt",
+      width: 150,
+      render: (sentAt) => sentAt ?? <Text type="secondary">Not sent</Text>
+    },
     {
       title: "Dedupe key",
       dataIndex: "dedupeKey",
@@ -50,7 +62,20 @@ export function InboxPageClient({ view }: { view: InboxWorkspaceView }) {
           )}
         />
       </Card>
-      <Card title="Email outbox preview" extra={<MailOutlined />}>
+      <Card
+        title="Email outbox"
+        extra={
+          <Flex align="center" gap={8}>
+            <MailOutlined />
+            <form action="/inbox/send" method="post">
+              <input type="hidden" name="projectId" value={view.project.id} />
+              <Button htmlType="submit" size="small">
+                Send queued
+              </Button>
+            </form>
+          </Flex>
+        }
+      >
         <Table rowKey="id" columns={emailColumns} dataSource={view.emailOutbox} pagination={false} />
       </Card>
     </Space>

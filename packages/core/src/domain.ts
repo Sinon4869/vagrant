@@ -362,6 +362,23 @@ export function createEmailOutboxItem(input: CreateEmailOutboxItemInput): EmailO
   };
 }
 
+export function markEmailOutboxItemSent(item: EmailOutboxItem, sentAt = new Date().toISOString()): EmailOutboxItem {
+  return {
+    ...item,
+    status: "sent",
+    sentAt,
+    updatedAt: sentAt
+  };
+}
+
+export function markEmailOutboxItemFailed(item: EmailOutboxItem, updatedAt = new Date().toISOString()): EmailOutboxItem {
+  return {
+    ...item,
+    status: "failed",
+    updatedAt
+  };
+}
+
 export interface KnowledgePage {
   id: string;
   projectId: string;
