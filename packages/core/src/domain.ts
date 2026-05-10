@@ -136,3 +136,148 @@ export function createIssue(input: CreateIssueInput): Issue {
     updatedAt: now
   };
 }
+
+export type RepositoryProviderType =
+  | "generic_git"
+  | "github"
+  | "gitlab"
+  | "gitea"
+  | "bitbucket"
+  | "local_only";
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectInput {
+  id: string;
+  name: string;
+  description?: string;
+  now?: string;
+}
+
+export function createProject(input: CreateProjectInput): Project {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    name: input.name,
+    description: input.description ?? "",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+export interface RepositoryConfig {
+  id: string;
+  projectId: string;
+  name: string;
+  localPath: string;
+  remoteUrl: string | null;
+  providerType: RepositoryProviderType;
+  defaultBaseBranch: string;
+  credentialProfile: string | null;
+  branchNamePrefix: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRepositoryConfigInput {
+  id: string;
+  projectId: string;
+  name: string;
+  localPath: string;
+  remoteUrl?: string | null;
+  providerType?: RepositoryProviderType;
+  defaultBaseBranch?: string;
+  credentialProfile?: string | null;
+  branchNamePrefix?: string;
+  now?: string;
+}
+
+export function createRepositoryConfig(input: CreateRepositoryConfigInput): RepositoryConfig {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    name: input.name,
+    localPath: input.localPath,
+    remoteUrl: input.remoteUrl ?? null,
+    providerType: input.providerType ?? "generic_git",
+    defaultBaseBranch: input.defaultBaseBranch ?? "main",
+    credentialProfile: input.credentialProfile ?? null,
+    branchNamePrefix: input.branchNamePrefix ?? "vagrant",
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+export enum RuntimeKind {
+  Mock = "mock",
+  CodexCli = "codex_cli",
+  ClaudeCli = "claude_cli"
+}
+
+export type AgentRunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface AgentRunLogEntry {
+  stream: "stdout" | "stderr" | "system";
+  body: string;
+  createdAt: string;
+}
+
+export interface AgentRun {
+  id: string;
+  projectId: string;
+  issueId: string;
+  agentRole: AgentRole;
+  runtimeKind: RuntimeKind;
+  status: AgentRunStatus;
+  workingDirectory: string;
+  prompt: string;
+  summary: string;
+  logs: AgentRunLogEntry[];
+  evidenceIds: string[];
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAgentRunInput {
+  id: string;
+  projectId: string;
+  issueId: string;
+  agentRole: AgentRole;
+  runtimeKind: RuntimeKind;
+  workingDirectory: string;
+  prompt: string;
+  now?: string;
+}
+
+export function createAgentRun(input: CreateAgentRunInput): AgentRun {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    issueId: input.issueId,
+    agentRole: input.agentRole,
+    runtimeKind: input.runtimeKind,
+    status: "queued",
+    workingDirectory: input.workingDirectory,
+    prompt: input.prompt,
+    summary: "",
+    logs: [],
+    evidenceIds: [],
+    startedAt: null,
+    completedAt: null,
+    createdAt: now,
+    updatedAt: now
+  };
+}
