@@ -65,3 +65,21 @@ Phase 2 adds the local execution foundation used by the future daemon:
 - `CodexCliRuntimeAdapter` and `ClaudeCliRuntimeAdapter` call local CLI binaries through an injectable process runner.
 
 The Phase 2 CLI adapters are intentionally skeletal. They establish the command boundary and evidence capture contract; the daemon, streaming logs, approvals, email digests, provider sync, and wiki indexing are separate follow-up phases.
+
+## Phase 3 Persisted Repository Page
+
+The `/repositories` page now reads and writes the local workspace store instead of rendering only static demo rows.
+
+Runtime data defaults to:
+
+```text
+apps/web/.vagrant/runtime/workspace-state.json
+```
+
+Set `VAGRANT_RUNTIME_DIR` before running the web app to store state somewhere else:
+
+```bash
+VAGRANT_RUNTIME_DIR=/Users/asuka/Documents/vagrant/.vagrant/runtime pnpm dev
+```
+
+When the store is empty, the web app seeds the `vagrant` project, its default repository, and the demo root issue. Adding a repository from the page writes a new `RepositoryConfig` record through `LocalStore` and revalidates `/repositories`.
