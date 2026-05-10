@@ -4,6 +4,7 @@ import {
   IssueType,
   RuntimeKind,
   createAgentRun,
+  createEmailOutboxItem,
   createIssue,
   createKnowledgePage,
   createNotificationItem,
@@ -71,12 +72,23 @@ describe("LocalStore", () => {
         linkedRepositoryIds: [repository.id],
         now
       });
+      const email = createEmailOutboxItem({
+        id: "email-1",
+        projectId: project.id,
+        notificationIds: [notification.id],
+        subject: "Backend run needs approval",
+        body: "The agent requested repository write access.",
+        delivery: "immediate",
+        dedupeKey: notification.dedupeKey,
+        now
+      });
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
       await store.upsertRootIssue(rootIssue);
       await store.upsertAgentRun(run);
       await store.upsertNotification(notification);
+      await store.upsertEmailOutboxItem(email);
       await store.upsertKnowledgePage(knowledgePage);
       await store.addDispatchKey("issue-root:issue-root:backend_developer:event-1:run");
 
@@ -91,6 +103,8 @@ describe("LocalStore", () => {
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
       expect(await reloaded.listNotifications(project.id)).toEqual([notification]);
+      expect(await reloaded.listEmailOutbox(project.id)).toEqual([email]);
+      expect(await reloaded.hasEmailDedupeKey(notification.dedupeKey)).toBe(true);
       expect(await reloaded.listKnowledgePages(project.id)).toEqual([knowledgePage]);
       expect(await reloaded.hasDispatchKey("issue-root:issue-root:backend_developer:event-1:run")).toBe(true);
     });

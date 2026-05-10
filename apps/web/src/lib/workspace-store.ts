@@ -13,6 +13,7 @@ import {
   type Project,
   type RepositoryConfig,
   type RepositoryProviderType,
+  createEmailOutboxItem,
   createPersistedDemoState,
   planEmailNotifications
 } from "@vagrant/core";
@@ -264,12 +265,28 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
 
   const rootIssues = await store.listRootIssues(project.id);
   const notifications = await store.listNotifications(project.id);
+  const existingOutbox = await store.listEmailOutbox(project.id);
   const emailPlans = planEmailNotifications({
     projectId: project.id,
     notifications,
-    sentDedupeKeys: new Set(),
+    sentDedupeKeys: new Set(existingOutbox.map((item) => item.dedupeKey)),
     now: new Date().toISOString()
   });
+  const plannedOutbox = emailPlans.map((plan) => createEmailOutboxItem({
+    id: plan.id,
+    projectId: plan.projectId,
+    notificationIds: plan.notificationIds,
+    subject: plan.subject,
+    body: plan.body,
+    delivery: plan.delivery,
+    dedupeKey: plan.dedupeKey
+  }));
+
+  for (const item of plannedOutbox) {
+    await store.upsertEmailOutboxItem(item);
+  }
+
+  const emailOutbox = [...plannedOutbox, ...existingOutbox];
 
   return {
     project: {
@@ -277,12 +294,12 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
       name: project.name
     },
     inbox: notifications.map((notification) => toInboxRow(notification, rootIssues)),
-    emailOutbox: emailPlans.map((plan) => ({
-      id: plan.id,
-      subject: plan.subject,
-      delivery: plan.delivery === "immediate" ? "Immediate" : "Digest",
-      notifications: plan.notificationIds.length,
-      dedupeKey: plan.dedupeKey
+    emailOutbox: emailOutbox.map((item) => ({
+      id: item.id,
+      subject: item.subject,
+      delivery: item.delivery === "immediate" ? "Immediate" : "Digest",
+      notifications: item.notificationIds.length,
+      dedupeKey: item.dedupeKey
     }))
   };
 }

@@ -4,6 +4,7 @@ import {
   IssueType,
   RuntimeKind,
   createAgentRun,
+  createEmailOutboxItem,
   createIssue,
   createKnowledgePage,
   createNotificationItem,
@@ -72,6 +73,16 @@ describeIfDatabase("PostgresStore", () => {
       linkedRepositoryIds: [repository.id],
       now
     });
+    const email = createEmailOutboxItem({
+      id: `email-${suffix}`,
+      projectId: project.id,
+      notificationIds: [notification.id],
+      subject: "Issue is blocked",
+      body: "A review gate needs attention.",
+      delivery: "immediate",
+      dedupeKey: notification.dedupeKey,
+      now
+    });
     const dispatchKey = `${rootIssue.id}:${rootIssue.id}:backend_developer:event-1:run`;
 
     await store.upsertProject(project);
@@ -79,6 +90,7 @@ describeIfDatabase("PostgresStore", () => {
     await store.upsertRootIssue(rootIssue);
     await store.upsertAgentRun(run);
     await store.upsertNotification(notification);
+    await store.upsertEmailOutboxItem(email);
     await store.upsertKnowledgePage(knowledgePage);
     await store.addDispatchKey(dispatchKey);
 
@@ -90,6 +102,8 @@ describeIfDatabase("PostgresStore", () => {
     expect(await store.listAgentRuns(rootIssue.id)).toEqual([run]);
     expect(await store.listProjectAgentRuns(project.id)).toEqual([run]);
     expect(await store.listNotifications(project.id)).toEqual([notification]);
+    expect(await store.listEmailOutbox(project.id)).toEqual([email]);
+    expect(await store.hasEmailDedupeKey(notification.dedupeKey)).toBe(true);
     expect(await store.listKnowledgePages(project.id)).toEqual([knowledgePage]);
     expect(await store.hasDispatchKey(dispatchKey)).toBe(true);
   });

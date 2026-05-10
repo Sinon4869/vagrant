@@ -1,6 +1,7 @@
 import pg from "pg";
 import {
   type AgentRun,
+  type EmailOutboxItem,
   type Evidence,
   type Issue,
   type KnowledgePage,
@@ -107,6 +108,21 @@ export class PostgresStore implements WorkspaceStore {
         tags jsonb not null,
         linked_requirement_ids jsonb not null,
         linked_repository_ids jsonb not null,
+        created_at timestamptz not null,
+        updated_at timestamptz not null
+      );
+
+      create table if not exists email_outbox (
+        id text primary key,
+        project_id text not null references projects(id) on delete cascade,
+        notification_ids jsonb not null,
+        subject text not null,
+        body text not null,
+        delivery text not null,
+        status text not null,
+        dedupe_key text not null unique,
+        scheduled_for timestamptz not null,
+        sent_at timestamptz,
         created_at timestamptz not null,
         updated_at timestamptz not null
       );
@@ -313,6 +329,57 @@ export class PostgresStore implements WorkspaceStore {
     );
   }
 
+  async listEmailOutbox(projectId: string): Promise<EmailOutboxItem[]> {
+    const result = await this.pool.query<EmailOutboxRow>(
+      "select * from email_outbox where project_id = $1 order by updated_at desc",
+      [projectId]
+    );
+    return result.rows.map(emailOutboxFromRow);
+  }
+
+  async upsertEmailOutboxItem(item: EmailOutboxItem): Promise<void> {
+    await this.pool.query(
+      `insert into email_outbox (
+        id, project_id, notification_ids, subject, body, delivery, status,
+        dedupe_key, scheduled_for, sent_at, created_at, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      on conflict (id) do update set
+        project_id = excluded.project_id,
+        notification_ids = excluded.notification_ids,
+        subject = excluded.subject,
+        body = excluded.body,
+        delivery = excluded.delivery,
+        status = excluded.status,
+        dedupe_key = excluded.dedupe_key,
+        scheduled_for = excluded.scheduled_for,
+        sent_at = excluded.sent_at,
+        updated_at = excluded.updated_at`,
+      [
+        item.id,
+        item.projectId,
+        JSON.stringify(item.notificationIds),
+        item.subject,
+        item.body,
+        item.delivery,
+        item.status,
+        item.dedupeKey,
+        item.scheduledFor,
+        item.sentAt,
+        item.createdAt,
+        item.updatedAt
+      ]
+    );
+  }
+
+  async hasEmailDedupeKey(dedupeKey: string): Promise<boolean> {
+    const result = await this.pool.query<{ exists: boolean }>(
+      "select exists(select 1 from email_outbox where dedupe_key = $1)",
+      [dedupeKey]
+    );
+    return result.rows[0]?.exists ?? false;
+  }
+
   async listKnowledgePages(projectId: string): Promise<KnowledgePage[]> {
     const result = await this.pool.query<KnowledgePageRow>(
       "select * from knowledge_pages where project_id = $1 order by updated_at desc",
@@ -454,6 +521,21 @@ interface KnowledgePageRow {
   updated_at: Date;
 }
 
+interface EmailOutboxRow {
+  id: string;
+  project_id: string;
+  notification_ids: string[];
+  subject: string;
+  body: string;
+  delivery: EmailOutboxItem["delivery"];
+  status: EmailOutboxItem["status"];
+  dedupe_key: string;
+  scheduled_for: Date;
+  sent_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
 function projectFromRow(row: ProjectRow): Project {
   return {
     id: row.id,
@@ -527,6 +609,23 @@ function knowledgePageFromRow(row: KnowledgePageRow): KnowledgePage {
     tags: row.tags,
     linkedRequirementIds: row.linked_requirement_ids,
     linkedRepositoryIds: row.linked_repository_ids,
+    createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString()
+  };
+}
+
+function emailOutboxFromRow(row: EmailOutboxRow): EmailOutboxItem {
+  return {
+    id: row.id,
+    projectId: row.project_id,
+    notificationIds: row.notification_ids,
+    subject: row.subject,
+    body: row.body,
+    delivery: row.delivery,
+    status: row.status,
+    dedupeKey: row.dedupe_key,
+    scheduledFor: row.scheduled_for.toISOString(),
+    sentAt: row.sent_at?.toISOString() ?? null,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString()
   };

@@ -1,5 +1,6 @@
 import {
   type AgentRun,
+  type EmailOutboxItem,
   type Evidence,
   type Issue,
   type KnowledgePage,
@@ -23,6 +24,9 @@ export interface WorkspaceStore {
   upsertAgentRun(run: AgentRun): Promise<void>;
   listNotifications(projectId: string): Promise<NotificationItem[]>;
   upsertNotification(notification: NotificationItem): Promise<void>;
+  listEmailOutbox(projectId: string): Promise<EmailOutboxItem[]>;
+  upsertEmailOutboxItem(item: EmailOutboxItem): Promise<void>;
+  hasEmailDedupeKey(dedupeKey: string): Promise<boolean>;
   listKnowledgePages(projectId: string): Promise<KnowledgePage[]>;
   upsertKnowledgePage(page: KnowledgePage): Promise<void>;
   appendEvidence(evidence: Evidence[]): Promise<void>;

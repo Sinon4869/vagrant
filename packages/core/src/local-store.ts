@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   type AgentRun,
+  type EmailOutboxItem,
   type Evidence,
   type Issue,
   type KnowledgePage,
@@ -22,6 +23,7 @@ export interface LocalWorkspaceState {
   rootIssues: Issue[];
   agentRuns: AgentRun[];
   notifications: NotificationItem[];
+  emailOutbox: EmailOutboxItem[];
   knowledgePages: KnowledgePage[];
   evidence: Evidence[];
   dispatchKeys: string[];
@@ -34,6 +36,7 @@ const emptyState: LocalWorkspaceState = {
   rootIssues: [],
   agentRuns: [],
   notifications: [],
+  emailOutbox: [],
   knowledgePages: [],
   evidence: [],
   dispatchKeys: []
@@ -139,6 +142,25 @@ export class LocalStore implements WorkspaceStore {
     }));
   }
 
+  async listEmailOutbox(projectId: string): Promise<EmailOutboxItem[]> {
+    const state = await this.readState();
+    return state.emailOutbox
+      .filter((item) => item.projectId === projectId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async upsertEmailOutboxItem(item: EmailOutboxItem): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      emailOutbox: upsertById(state.emailOutbox, item)
+    }));
+  }
+
+  async hasEmailDedupeKey(dedupeKey: string): Promise<boolean> {
+    const state = await this.readState();
+    return state.emailOutbox.some((item) => item.dedupeKey === dedupeKey);
+  }
+
   async listKnowledgePages(projectId: string): Promise<KnowledgePage[]> {
     const state = await this.readState();
     return state.knowledgePages
@@ -192,6 +214,7 @@ export class LocalStore implements WorkspaceStore {
       ...emptyState,
       ...state,
       notifications: state.notifications ?? [],
+      emailOutbox: state.emailOutbox ?? [],
       knowledgePages: state.knowledgePages ?? []
     };
   }

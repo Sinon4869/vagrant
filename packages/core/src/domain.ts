@@ -311,6 +311,57 @@ export function createNotificationItem(input: CreateNotificationItemInput): Noti
   };
 }
 
+export type EmailOutboxDelivery = "immediate" | "digest";
+export type EmailOutboxStatus = "queued" | "sent" | "failed" | "cancelled";
+
+export interface EmailOutboxItem {
+  id: string;
+  projectId: string;
+  notificationIds: string[];
+  subject: string;
+  body: string;
+  delivery: EmailOutboxDelivery;
+  status: EmailOutboxStatus;
+  dedupeKey: string;
+  scheduledFor: string;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEmailOutboxItemInput {
+  id: string;
+  projectId: string;
+  notificationIds: string[];
+  subject: string;
+  body: string;
+  delivery: EmailOutboxDelivery;
+  dedupeKey: string;
+  scheduledFor?: string;
+  status?: EmailOutboxStatus;
+  sentAt?: string | null;
+  now?: string;
+}
+
+export function createEmailOutboxItem(input: CreateEmailOutboxItemInput): EmailOutboxItem {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    notificationIds: input.notificationIds,
+    subject: input.subject,
+    body: input.body,
+    delivery: input.delivery,
+    status: input.status ?? "queued",
+    dedupeKey: input.dedupeKey,
+    scheduledFor: input.scheduledFor ?? now,
+    sentAt: input.sentAt ?? null,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 export interface KnowledgePage {
   id: string;
   projectId: string;
