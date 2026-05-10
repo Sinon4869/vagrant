@@ -34,7 +34,13 @@ export async function dispatchReadyIssues(
       return issue;
     }
 
-    const dispatchKey = [input.root.id, input.triggerEventId, "run"].join(":");
+    const dispatchKey = [
+      input.root.id,
+      issue.id,
+      issue.ownerAgentRole ?? "unassigned",
+      input.triggerEventId,
+      "run"
+    ].join(":");
 
     if (dispatchKeys.has(dispatchKey)) {
       return issue;
@@ -50,7 +56,14 @@ export async function dispatchReadyIssues(
       workingDirectory: `/mock/workspaces/${input.root.id}`
     });
 
-    await input.provider.syncIssue(issue);
+    const updatedIssue = {
+      ...issue,
+      status: IssueStatus.Done,
+      evidence: [...issue.evidence, ...runResult.evidence],
+      updatedAt: "2026-05-10T00:00:00.000Z"
+    };
+
+    await input.provider.syncIssue(updatedIssue);
 
     dispatchedRuns.push({
       runId,
@@ -59,12 +72,7 @@ export async function dispatchReadyIssues(
       summary: runResult.summary
     });
 
-    return {
-      ...issue,
-      status: IssueStatus.Done,
-      evidence: [...issue.evidence, ...runResult.evidence],
-      updatedAt: "2026-05-10T00:00:00.000Z"
-    };
+    return updatedIssue;
   });
 
   return {
