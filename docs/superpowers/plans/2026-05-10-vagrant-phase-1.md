@@ -215,13 +215,16 @@ Write `packages/core/tsconfig.json`:
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/__tests__/**/*.ts"]
 }
 ```
 
@@ -420,7 +423,7 @@ export function createIssue(input: CreateIssueInput): Issue {
 Write `packages/core/src/index.ts`:
 
 ```ts
-export * from "./domain";
+export * from "./domain.js";
 ```
 
 - [ ] **Step 5: Run tests and typecheck**
@@ -430,9 +433,11 @@ Run:
 ```bash
 pnpm --filter @vagrant/core test
 pnpm --filter @vagrant/core typecheck
+pnpm --filter @vagrant/core build
+node -e "import('./packages/core/dist/index.js').then((m)=>{ if (!m.createIssue) process.exit(1); console.log('ok') })"
 ```
 
-Expected: both commands pass.
+Expected: all commands pass, the Node import prints `ok`, and `packages/core/dist` does not contain compiled test files.
 
 - [ ] **Step 6: Commit**
 
