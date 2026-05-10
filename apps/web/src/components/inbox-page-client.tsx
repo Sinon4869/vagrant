@@ -1,13 +1,30 @@
 "use client";
 
-import { BellOutlined } from "@ant-design/icons";
-import { Card, List, Space, Tag, Typography } from "antd";
+import { BellOutlined, MailOutlined } from "@ant-design/icons";
+import { Card, List, Space, Table, Tag, Typography } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
-import { type InboxWorkspaceView } from "@/lib/workspace-store";
+import { type EmailOutboxRow, type InboxWorkspaceView } from "@/lib/workspace-store";
 
 const { Text } = Typography;
 
 export function InboxPageClient({ view }: { view: InboxWorkspaceView }) {
+  const emailColumns: ColumnsType<EmailOutboxRow> = [
+    { title: "Subject", dataIndex: "subject" },
+    {
+      title: "Delivery",
+      dataIndex: "delivery",
+      width: 130,
+      render: (delivery) => <Tag color={delivery === "Immediate" ? "warning" : "blue"}>{delivery}</Tag>
+    },
+    { title: "Items", dataIndex: "notifications", width: 90 },
+    {
+      title: "Dedupe key",
+      dataIndex: "dedupeKey",
+      render: (dedupeKey) => <Text code>{dedupeKey}</Text>
+    }
+  ];
+
   return (
     <Space direction="vertical" size={24} style={{ width: "100%" }}>
       <PageHeader
@@ -32,6 +49,9 @@ export function InboxPageClient({ view }: { view: InboxWorkspaceView }) {
             </List.Item>
           )}
         />
+      </Card>
+      <Card title="Email outbox preview" extra={<MailOutlined />}>
+        <Table rowKey="id" columns={emailColumns} dataSource={view.emailOutbox} pagination={false} />
       </Card>
     </Space>
   );

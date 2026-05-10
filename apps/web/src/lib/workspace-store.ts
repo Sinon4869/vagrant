@@ -13,7 +13,8 @@ import {
   type Project,
   type RepositoryConfig,
   type RepositoryProviderType,
-  createPersistedDemoState
+  createPersistedDemoState,
+  planEmailNotifications
 } from "@vagrant/core";
 import { LocalStore, PostgresStore, type WorkspaceStore } from "@vagrant/core/node";
 
@@ -95,12 +96,21 @@ export interface InboxRow {
   updatedAt: string;
 }
 
+export interface EmailOutboxRow {
+  id: string;
+  subject: string;
+  delivery: "Immediate" | "Digest";
+  notifications: number;
+  dedupeKey: string;
+}
+
 export interface InboxWorkspaceView {
   project: {
     id: string;
     name: string;
   };
   inbox: InboxRow[];
+  emailOutbox: EmailOutboxRow[];
 }
 
 export interface ProjectRow {
@@ -252,13 +262,26 @@ export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Pro
 
   const rootIssues = await store.listRootIssues(project.id);
   const notifications = await store.listNotifications(project.id);
+  const emailPlans = planEmailNotifications({
+    projectId: project.id,
+    notifications,
+    sentDedupeKeys: new Set(),
+    now: new Date().toISOString()
+  });
 
   return {
     project: {
       id: project.id,
       name: project.name
     },
-    inbox: notifications.map((notification) => toInboxRow(notification, rootIssues))
+    inbox: notifications.map((notification) => toInboxRow(notification, rootIssues)),
+    emailOutbox: emailPlans.map((plan) => ({
+      id: plan.id,
+      subject: plan.subject,
+      delivery: plan.delivery === "immediate" ? "Immediate" : "Digest",
+      notifications: plan.notificationIds.length,
+      dedupeKey: plan.dedupeKey
+    }))
   };
 }
 
