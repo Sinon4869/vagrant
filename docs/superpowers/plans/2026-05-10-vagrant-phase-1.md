@@ -1842,6 +1842,7 @@ git commit -m "feat: add project dashboard"
 - Create: `apps/web/src/components/issue-detail-panel.tsx`
 - Create: `apps/web/src/components/activity-timeline.tsx`
 - Create: `apps/web/src/components/evidence-list.tsx`
+- Create: `apps/web/src/components/root-issue-page-client.tsx`
 - Create: `apps/web/src/app/issues/[issueId]/page.tsx`
 
 - [ ] **Step 1: Add recursive issue tree component**
