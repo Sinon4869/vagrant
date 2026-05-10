@@ -46,6 +46,7 @@ export function RepositoriesPageClient({ view }: { view: RepositoryWorkspaceView
 
       <Card title="Add repository" extra={<PlusOutlined />}>
         <Form action="/repositories/create" method="post" layout="vertical" className="repository-form">
+          <input type="hidden" name="projectId" value={view.project.id} />
           <Form.Item label="Name" name="name" rules={[{ required: true }]}>
             <Input name="name" placeholder="vagrant-services" />
           </Form.Item>

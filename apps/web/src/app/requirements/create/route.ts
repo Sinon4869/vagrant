@@ -4,7 +4,7 @@ import {
   type RequirementComplexity,
   planIssueTree
 } from "@vagrant/core";
-import { DEFAULT_PROJECT_ID, getWorkspaceStore } from "@/lib/workspace-store";
+import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
 const complexities = new Set<RequirementComplexity>(["small", "medium", "large"]);
 const areas = new Set<RequirementArea>(["frontend", "backend", "full_stack", "devops", "documentation"]);
@@ -15,11 +15,12 @@ export async function POST(request: NextRequest) {
   const description = readRequiredString(formData, "description");
   const complexity = readComplexity(formData);
   const area = readArea(formData);
+  const projectId = resolveProjectId(readOptionalString(formData, "projectId"));
   const rootIssueId = `issue-${slugify(title)}`;
 
   const store = await getWorkspaceStore();
   const rootIssue = planIssueTree({
-    projectId: DEFAULT_PROJECT_ID,
+    projectId,
     rootIssueId,
     title,
     description,
@@ -37,6 +38,16 @@ function readRequiredString(formData: FormData, key: string): string {
 
   if (typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`${key} is required`);
+  }
+
+  return value.trim();
+}
+
+function readOptionalString(formData: FormData, key: string): string | null {
+  const value = formData.get(key);
+
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
   }
 
   return value.trim();

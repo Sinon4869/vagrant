@@ -3,8 +3,9 @@ import { getKnowledgeWorkspaceView } from "@/lib/workspace-store";
 
 export const dynamic = "force-dynamic";
 
-export default async function KnowledgePage() {
-  const view = await getKnowledgeWorkspaceView();
+export default async function KnowledgePage({ searchParams }: { searchParams: Promise<{ projectId?: string }> }) {
+  const { projectId } = await searchParams;
+  const view = await getKnowledgeWorkspaceView(projectId);
 
   return <KnowledgePageClient view={view} />;
 }

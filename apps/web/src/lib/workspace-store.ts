@@ -142,6 +142,10 @@ export function getRuntimeDir(): string {
   return process.env.VAGRANT_RUNTIME_DIR ?? join(process.cwd(), ".vagrant", "runtime");
 }
 
+export function resolveProjectId(projectId?: string | null): string {
+  return projectId && projectId.trim().length > 0 ? projectId.trim() : DEFAULT_PROJECT_ID;
+}
+
 export async function getWorkspaceStore(): Promise<WorkspaceStore> {
   if (process.env.VAGRANT_STORAGE === "postgres" || process.env.DATABASE_URL) {
     const connectionString = process.env.DATABASE_URL;
@@ -164,15 +168,16 @@ export async function getWorkspaceStore(): Promise<WorkspaceStore> {
   return store;
 }
 
-export async function getRepositoryWorkspaceView(): Promise<RepositoryWorkspaceView> {
+export async function getRepositoryWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<RepositoryWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
 
   if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
   }
 
-  const rootIssue = await store.getRootIssue("issue-vagrant-knowledge");
+  const rootIssues = await store.listRootIssues(project.id);
   const repositories = await store.listRepositories(project.id);
 
   return {
@@ -182,16 +187,17 @@ export async function getRepositoryWorkspaceView(): Promise<RepositoryWorkspaceV
       description: project.description,
       defaultRuntimeKind: RuntimeKind.CodexCli
     },
-    repositories: repositories.map((repository) => toRepositoryRow(repository, rootIssue?.id ? 1 : 0))
+    repositories: repositories.map((repository) => toRepositoryRow(repository, rootIssues.length))
   };
 }
 
-export async function getRequirementsWorkspaceView(): Promise<RequirementsWorkspaceView> {
+export async function getRequirementsWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<RequirementsWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
 
   if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
   }
 
   const repositories = await store.listRepositories(project.id);
@@ -212,12 +218,13 @@ export async function getPersistedRootIssue(issueId: string): Promise<Issue | nu
   return store.getRootIssue(issueId);
 }
 
-export async function getRunsWorkspaceView(): Promise<RunsWorkspaceView> {
+export async function getRunsWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<RunsWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
 
   if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
   }
 
   const repositories = await store.listRepositories(project.id);
@@ -234,12 +241,13 @@ export async function getRunsWorkspaceView(): Promise<RunsWorkspaceView> {
   };
 }
 
-export async function getInboxWorkspaceView(): Promise<InboxWorkspaceView> {
+export async function getInboxWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<InboxWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
 
   if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
   }
 
   const rootIssues = await store.listRootIssues(project.id);
@@ -270,12 +278,13 @@ export async function getProjectsWorkspaceView(): Promise<ProjectsWorkspaceView>
   };
 }
 
-export async function getKnowledgeWorkspaceView(): Promise<KnowledgeWorkspaceView> {
+export async function getKnowledgeWorkspaceView(projectId = DEFAULT_PROJECT_ID): Promise<KnowledgeWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
+  const resolvedProjectId = resolveProjectId(projectId);
+  const project = await store.getProject(resolvedProjectId);
 
   if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+    throw new Error(`Project not found after workspace initialization: ${resolvedProjectId}`);
   }
 
   const repositories = await store.listRepositories(project.id);

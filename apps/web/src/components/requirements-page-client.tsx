@@ -54,6 +54,7 @@ export function RequirementsPageClient({ view }: { view: RequirementsWorkspaceVi
 
       <Card title="Create requirement" extra={<PlusOutlined />}>
         <Form action="/requirements/create" method="post" layout="vertical" className="requirement-form">
+          <input type="hidden" name="projectId" value={view.project.id} />
           <Form.Item label="Title" name="title" rules={[{ required: true }]}>
             <Input name="title" placeholder="Add repository settings screen" />
           </Form.Item>

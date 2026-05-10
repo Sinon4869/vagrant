@@ -44,6 +44,7 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
 
       <Card title="Dispatch ready issue" extra={<PlayCircleOutlined />}>
         <Form action="/runs/dispatch" method="post" layout="vertical" className="run-dispatch-form">
+          <input type="hidden" name="projectId" value={view.project.id} />
           <Form.Item label="Root requirement" name="rootIssueId" rules={[{ required: true }]}>
             <Select
               options={view.requirements.map((requirement) => ({

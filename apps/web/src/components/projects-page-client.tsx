@@ -16,7 +16,7 @@ export function ProjectsPageClient({ view }: { view: ProjectsWorkspaceView }) {
       dataIndex: "name",
       render: (name, record) => (
         <Space direction="vertical" size={0}>
-          <Link href="/">
+          <Link href={`/requirements?projectId=${encodeURIComponent(record.id)}`}>
             <Text strong>{name}</Text>
           </Link>
           <Text type="secondary">{record.description}</Text>
@@ -33,8 +33,8 @@ export function ProjectsPageClient({ view }: { view: ProjectsWorkspaceView }) {
       title: "",
       key: "action",
       width: 80,
-      render: () => (
-        <Link href="/">
+      render: (_, record) => (
+        <Link href={`/requirements?projectId=${encodeURIComponent(record.id)}`}>
           <Button icon={<ArrowRightOutlined />} />
         </Link>
       )

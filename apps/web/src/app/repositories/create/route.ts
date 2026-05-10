@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { type RepositoryProviderType, createRepositoryConfig } from "@vagrant/core";
-import { DEFAULT_PROJECT_ID, getWorkspaceStore } from "@/lib/workspace-store";
+import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
 const providerTypes = new Set<RepositoryProviderType>([
   "generic_git",
@@ -19,12 +19,13 @@ export async function POST(request: NextRequest) {
   const defaultBaseBranch = readRequiredString(formData, "defaultBaseBranch");
   const remoteUrl = readOptionalString(formData, "remoteUrl");
   const branchNamePrefix = readOptionalString(formData, "branchNamePrefix") ?? "vagrant";
+  const projectId = resolveProjectId(readOptionalString(formData, "projectId"));
 
   const store = await getWorkspaceStore();
   await store.upsertRepository(
     createRepositoryConfig({
       id: `repo-${slugify(name)}`,
-      projectId: DEFAULT_PROJECT_ID,
+      projectId,
       name,
       localPath,
       remoteUrl,
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     })
   );
 
-  return NextResponse.redirect(new URL("/repositories", request.url), 303);
+  return NextResponse.redirect(new URL(`/repositories?projectId=${encodeURIComponent(projectId)}`, request.url), 303);
 }
 
 function readRequiredString(formData: FormData, key: string): string {
