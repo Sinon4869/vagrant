@@ -1,13 +1,7 @@
 import { type ProviderAdapter, type RuntimeAdapter } from "./adapters.js";
-import {
-  AgentRole,
-  type AgentRun,
-  type Issue,
-  type RepositoryConfig,
-  RuntimeKind,
-  createAgentRun
-} from "./domain.js";
-import { dispatchReadyIssues, type DispatchReadyIssuesResult } from "./dispatcher.js";
+import { type Issue, type RepositoryConfig, RuntimeKind } from "./domain.js";
+import { type DispatchReadyIssuesResult } from "./dispatcher.js";
+import { executeDispatchAction, scanReadyDispatchActions } from "./orchestration-service.js";
 import { type WorkspaceStore } from "./workspace-store.js";
 import { type WorkspaceManager } from "./workspace-manager.js";
 
@@ -32,36 +26,41 @@ export async function dispatchPersistedReadyIssue(
     throw new Error(`Root issue not found: ${input.rootIssueId}`);
   }
 
-  const workingDirectory = await resolveWorkingDirectory(input, root);
-  const previousDispatchKeys = await input.store.listDispatchKeys();
-
-  const result = await dispatchReadyIssues({
-    root,
+  const scanResult = await scanReadyDispatchActions({
+    store: input.store,
+    rootIssueId: root.id,
     triggerEventId: input.triggerEventId,
-    runtime: input.runtime,
-    provider: input.provider,
-    previousDispatchKeys
   });
+  const action = scanResult.actions.find((item) => item.kind === "start_agent_run");
+  const dispatchedRuns = [];
 
-  await input.store.upsertRootIssue(result.root);
-
-  for (const run of result.dispatchedRuns) {
-    await input.store.addDispatchKey(run.dispatchKey);
-    const issue = findIssueById(result.root, run.issueId);
-    const agentRun = createAgentRun({
-      id: run.runId,
-      projectId: result.root.projectId,
-      issueId: run.issueId,
-      agentRole: issue?.ownerAgentRole ?? AgentRole.EngineeringLead,
+  if (action) {
+    const workingDirectory = await resolveWorkingDirectory(input, root);
+    const result = await executeDispatchAction({
+      store: input.store,
+      rootIssueId: root.id,
+      actionId: action.id,
       runtimeKind: input.runtimeKind,
+      runtime: input.runtime,
+      provider: input.provider,
       workingDirectory,
-      prompt: issue ? `Issue: ${issue.title}` : `Issue: ${run.issueId}`,
-      now: "2026-05-10T00:00:00.000Z"
     });
-    await input.store.upsertAgentRun(markSucceeded(agentRun, run.summary));
+
+    if (result.run) {
+      dispatchedRuns.push({
+        runId: result.run.id,
+        issueId: result.run.issueId,
+        dispatchKey: action.idempotencyKey,
+        summary: result.run.summary
+      });
+    }
   }
 
-  return result;
+  return {
+    root: await input.store.getRootIssue(root.id) ?? root,
+    dispatchedRuns,
+    dispatchKeys: await input.store.listDispatchKeys()
+  };
 }
 
 async function resolveWorkingDirectory(input: DispatchPersistedReadyIssueInput, root: Issue): Promise<string> {
@@ -91,31 +90,4 @@ async function findRepository(
   }
 
   return repository;
-}
-
-function findIssueById(issue: Issue, issueId: string): Issue | null {
-  if (issue.id === issueId) {
-    return issue;
-  }
-
-  for (const child of issue.children) {
-    const found = findIssueById(child, issueId);
-
-    if (found) {
-      return found;
-    }
-  }
-
-  return null;
-}
-
-function markSucceeded(run: AgentRun, summary: string): AgentRun {
-  return {
-    ...run,
-    status: "succeeded",
-    summary,
-    startedAt: run.createdAt,
-    completedAt: run.createdAt,
-    updatedAt: run.createdAt
-  };
 }
