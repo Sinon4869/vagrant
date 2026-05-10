@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { LocalStore } from "../local-store.js";
-import { executeDispatchAction, scanReadyDispatchActions } from "../orchestration-service.js";
+import { executeDispatchAction, runOrchestrationTick, scanReadyDispatchActions } from "../orchestration-service.js";
 import { MockProviderAdapter, MockRuntimeAdapter } from "../adapters.js";
 import { AgentRole, RuntimeKind, createProject, decideApproval, type DispatchAction } from "../domain.js";
 import { planIssueTree } from "../rule-planner.js";
@@ -351,6 +351,55 @@ describe("orchestration service", () => {
       expect(savedRoot?.children[0]?.status).toBe("done");
       expect(savedRoot?.children[0]?.evidence[0]?.title).toBe("Mock validation log");
       expect(savedActions.find((item) => item.id === action.id)?.status).toBe("succeeded");
+    });
+  });
+
+  it("runs a project orchestration tick across root issues and reports actions, runs, and approvals", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const frontendRoot = planIssueTree({
+        projectId: project.id,
+        rootIssueId: "root-frontend",
+        title: "Change button",
+        description: "Change one page button behavior",
+        complexity: "small",
+        area: "frontend",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const databaseRootIssue = databaseRoot(project.id);
+      await store.upsertProject(project);
+      await store.upsertRootIssue(frontendRoot);
+      await store.upsertRootIssue(databaseRootIssue);
+
+      const result = await runOrchestrationTick({
+        store,
+        projectId: project.id,
+        triggerEventId: "daemon-1",
+        runtimeKind: RuntimeKind.Mock,
+        runtime: new MockRuntimeAdapter(),
+        provider: new MockProviderAdapter(),
+        workingDirectory: "/mock/workspaces/project-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+
+      const runs = await store.listProjectAgentRuns(project.id);
+      const approvals = await store.listApprovals(project.id);
+      expect(result.scannedRootIssues).toBe(2);
+      expect(result.executedRuns).toHaveLength(1);
+      expect(result.createdApprovals).toHaveLength(1);
+      expect(runs).toHaveLength(1);
+      expect(approvals).toEqual([
+        expect.objectContaining({
+          rootIssueId: databaseRootIssue.id,
+          status: "pending"
+        })
+      ]);
     });
   });
 });

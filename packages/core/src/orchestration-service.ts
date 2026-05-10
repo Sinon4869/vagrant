@@ -42,6 +42,24 @@ export interface ExecuteDispatchActionResult {
   run: AgentRun | null;
 }
 
+export interface RunOrchestrationTickInput {
+  store: WorkspaceStore;
+  projectId: string;
+  triggerEventId: string;
+  runtimeKind: RuntimeKind;
+  runtime: RuntimeAdapter;
+  provider: ProviderAdapter;
+  workingDirectory: string;
+  now?: string;
+}
+
+export interface RunOrchestrationTickResult {
+  scannedRootIssues: number;
+  plannedActions: DispatchAction[];
+  createdApprovals: Approval[];
+  executedRuns: AgentRun[];
+}
+
 export async function scanReadyDispatchActions(
   input: ScanReadyDispatchActionsInput
 ): Promise<ScanReadyDispatchActionsResult> {
@@ -93,6 +111,54 @@ export async function scanReadyDispatchActions(
   return {
     actions,
     approvals: createdApprovals
+  };
+}
+
+export async function runOrchestrationTick(
+  input: RunOrchestrationTickInput
+): Promise<RunOrchestrationTickResult> {
+  const rootIssues = await input.store.listRootIssues(input.projectId);
+  const plannedActions: DispatchAction[] = [];
+  const createdApprovals: Approval[] = [];
+  const executedRuns: AgentRun[] = [];
+
+  for (const root of rootIssues) {
+    const scan = await scanReadyDispatchActions({
+      store: input.store,
+      rootIssueId: root.id,
+      triggerEventId: input.triggerEventId,
+      ...(input.now ? { now: input.now } : {})
+    });
+    plannedActions.push(...scan.actions);
+    createdApprovals.push(...scan.approvals);
+
+    const startAction = scan.actions.find((action) => action.kind === "start_agent_run");
+
+    if (!startAction) {
+      continue;
+    }
+
+    const execution = await executeDispatchAction({
+      store: input.store,
+      rootIssueId: root.id,
+      actionId: startAction.id,
+      runtimeKind: input.runtimeKind,
+      runtime: input.runtime,
+      provider: input.provider,
+      workingDirectory: input.workingDirectory,
+      ...(input.now ? { now: input.now } : {})
+    });
+
+    if (execution.run) {
+      executedRuns.push(execution.run);
+    }
+  }
+
+  return {
+    scannedRootIssues: rootIssues.length,
+    plannedActions,
+    createdApprovals,
+    executedRuns
   };
 }
 
