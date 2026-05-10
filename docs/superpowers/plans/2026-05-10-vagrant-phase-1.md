@@ -137,6 +137,7 @@ node_modules
 dist
 coverage
 .turbo
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
