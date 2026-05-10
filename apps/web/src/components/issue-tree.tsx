@@ -6,8 +6,30 @@ import { StatusBadge } from "@/components/status-badge";
 
 const { Text } = Typography;
 
-export function IssueTree({ root }: { root: Issue }) {
-  return <Tree blockNode defaultExpandAll showLine treeData={[toTreeNode(root)]} />;
+export function IssueTree({
+  root,
+  selectedIssueId,
+  onSelectIssue
+}: {
+  root: Issue;
+  selectedIssueId?: string;
+  onSelectIssue?: (issueId: string) => void;
+}) {
+  return (
+    <Tree
+      blockNode
+      defaultExpandAll
+      showLine
+      treeData={[toTreeNode(root)]}
+      {...(selectedIssueId ? { selectedKeys: [selectedIssueId] } : {})}
+      onSelect={(keys) => {
+        const issueId = String(keys[0] ?? "");
+        if (issueId) {
+          onSelectIssue?.(issueId);
+        }
+      }}
+    />
+  );
 }
 
 function toTreeNode(issue: Issue): TreeDataNode {

@@ -334,6 +334,123 @@ a {
   color: var(--text-secondary);
 }
 
+.issue-console-page {
+  width: 100%;
+}
+
+.issue-console-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.issue-console-header h2,
+.issue-console-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.issue-console-header h2 {
+  margin-top: 4px;
+}
+
+.issue-console-summary {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.issue-console-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+}
+
+.issue-tree-panel,
+.selected-issue-workspace,
+.execution-inspector {
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.issue-tree-panel,
+.execution-inspector {
+  position: sticky;
+  top: 84px;
+  padding: 14px;
+}
+
+.selected-issue-workspace {
+  overflow: hidden;
+}
+
+.selected-issue-heading {
+  padding: 18px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.selected-issue-heading h3 {
+  margin: 4px 0 6px;
+}
+
+.issue-section,
+.inspector-section {
+  padding: 16px 18px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.issue-section:first-of-type,
+.inspector-section:first-of-type {
+  border-top: 0;
+}
+
+.panel-title {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.panel-title.compact {
+  margin-bottom: 8px;
+}
+
+.panel-title h4,
+.panel-title h5 {
+  margin: 0;
+}
+
+.list-leading-icon {
+  margin-right: 10px;
+  color: var(--accent);
+}
+
+.child-issue-row {
+  align-items: center;
+}
+
+.requirement-check-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.issue-tree-panel .ant-tree-title {
+  min-width: 0;
+}
+
 .page-header h2,
 .page-header .ant-typography {
   margin-bottom: 0;
@@ -430,8 +547,15 @@ a {
 
   .health-strip,
   .cockpit-grid,
-  .cockpit-lower-grid {
+  .cockpit-lower-grid,
+  .issue-console-header,
+  .issue-console-grid {
     grid-template-columns: 1fr;
+  }
+
+  .issue-tree-panel,
+  .execution-inspector {
+    position: static;
   }
 
   .health-cell {
