@@ -10,6 +10,7 @@ import {
 
 export interface WorkspaceStore {
   initialize(): Promise<void>;
+  listProjects(): Promise<Project[]>;
   getProject(projectId: string): Promise<Project | null>;
   upsertProject(project: Project): Promise<void>;
   listRepositories(projectId: string): Promise<RepositoryConfig[]>;

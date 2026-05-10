@@ -83,6 +83,7 @@ describeIfDatabase("PostgresStore", () => {
     await store.addDispatchKey(dispatchKey);
 
     expect(await store.getProject(project.id)).toEqual(project);
+    expect((await store.listProjects()).some((item) => item.id === project.id)).toBe(true);
     expect(await store.listRepositories(project.id)).toEqual([repository]);
     expect(await store.listRootIssues(project.id)).toEqual([rootIssue]);
     expect(await store.getRootIssue(rootIssue.id)).toEqual(rootIssue);

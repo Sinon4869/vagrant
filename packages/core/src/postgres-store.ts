@@ -127,6 +127,13 @@ export class PostgresStore implements WorkspaceStore {
     return row ? projectFromRow(row) : null;
   }
 
+  async listProjects(): Promise<Project[]> {
+    const result = await this.pool.query<ProjectRow>(
+      "select * from projects order by updated_at desc"
+    );
+    return result.rows.map(projectFromRow);
+  }
+
   async upsertProject(project: Project): Promise<void> {
     await this.pool.query(
       `insert into projects (id, name, description, created_at, updated_at)

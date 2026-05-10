@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Progress, Space, Table, Tag, Typography } from "antd";
+import { Button, Card, Form, Input, Progress, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
 import { type ProjectRow, type ProjectsWorkspaceView } from "@/lib/workspace-store";
@@ -49,6 +49,19 @@ export function ProjectsPageClient({ view }: { view: ProjectsWorkspaceView }) {
         description="Each project owns its requirements, wiki pages, repositories, agents, runs, inbox, and settings."
         actions={<Button type="primary" icon={<PlusOutlined />}>New project</Button>}
       />
+      <Card title="Create project" extra={<PlusOutlined />}>
+        <Form action="/projects/create" method="post" layout="vertical" className="project-form">
+          <Form.Item label="Name" name="name" rules={[{ required: true }]}>
+            <Input name="name" placeholder="vagrant-services" />
+          </Form.Item>
+          <Form.Item label="Description" name="description">
+            <Input.TextArea name="description" rows={3} placeholder="Local-first multi-agent workspace for this product or repository group." />
+          </Form.Item>
+          <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+            Create project
+          </Button>
+        </Form>
+      </Card>
       <Card title="Project registry">
         <Table rowKey="id" columns={columns} dataSource={view.projects} pagination={false} />
       </Card>

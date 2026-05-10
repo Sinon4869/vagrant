@@ -256,17 +256,17 @@ export async function getInboxWorkspaceView(): Promise<InboxWorkspaceView> {
 
 export async function getProjectsWorkspaceView(): Promise<ProjectsWorkspaceView> {
   const store = await getWorkspaceStore();
-  const project = await store.getProject(DEFAULT_PROJECT_ID);
-
-  if (!project) {
-    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
-  }
-
-  const repositories = await store.listRepositories(project.id);
-  const rootIssues = await store.listRootIssues(project.id);
+  const projects = await store.listProjects();
+  const rows = await Promise.all(
+    projects.map(async (project) => {
+      const repositories = await store.listRepositories(project.id);
+      const rootIssues = await store.listRootIssues(project.id);
+      return toProjectRow(project, rootIssues, repositories);
+    })
+  );
 
   return {
-    projects: [toProjectRow(project, rootIssues, repositories)]
+    projects: rows
   };
 }
 

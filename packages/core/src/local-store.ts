@@ -66,6 +66,11 @@ export class LocalStore implements WorkspaceStore {
     return state.projects.find((project) => project.id === projectId) ?? null;
   }
 
+  async listProjects(): Promise<Project[]> {
+    const state = await this.readState();
+    return state.projects.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
   async upsertProject(project: Project): Promise<void> {
     await this.updateState((state) => ({
       ...state,

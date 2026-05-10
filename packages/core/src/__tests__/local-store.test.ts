@@ -84,6 +84,7 @@ describe("LocalStore", () => {
       await reloaded.initialize();
 
       expect(await reloaded.getProject(project.id)).toEqual(project);
+      expect(await reloaded.listProjects()).toEqual([project]);
       expect(await reloaded.listRepositories(project.id)).toEqual([repository]);
       expect(await reloaded.listRootIssues(project.id)).toEqual([rootIssue]);
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
