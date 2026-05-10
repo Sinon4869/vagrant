@@ -7,6 +7,7 @@ import {
   type Project,
   type RepositoryConfig
 } from "./domain.js";
+import { type WorkspaceStore } from "./workspace-store.js";
 
 export interface LocalStoreOptions {
   runtimeDir: string;
@@ -32,7 +33,7 @@ const emptyState: LocalWorkspaceState = {
   dispatchKeys: []
 };
 
-export class LocalStore {
+export class LocalStore implements WorkspaceStore {
   private readonly statePath: string;
 
   constructor(options: LocalStoreOptions) {

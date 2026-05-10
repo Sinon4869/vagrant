@@ -8,11 +8,11 @@ import {
   createAgentRun
 } from "./domain.js";
 import { dispatchReadyIssues, type DispatchReadyIssuesResult } from "./dispatcher.js";
-import { type LocalStore } from "./local-store.js";
+import { type WorkspaceStore } from "./workspace-store.js";
 import { type WorkspaceManager } from "./workspace-manager.js";
 
 export interface DispatchPersistedReadyIssueInput {
-  store: LocalStore;
+  store: WorkspaceStore;
   rootIssueId: string;
   repositoryId: string;
   triggerEventId: string;
@@ -79,7 +79,7 @@ async function resolveWorkingDirectory(input: DispatchPersistedReadyIssueInput, 
 }
 
 async function findRepository(
-  store: LocalStore,
+  store: WorkspaceStore,
   projectId: string,
   repositoryId: string
 ): Promise<RepositoryConfig> {
