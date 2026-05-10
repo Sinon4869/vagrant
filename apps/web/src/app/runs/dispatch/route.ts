@@ -5,7 +5,8 @@ import {
   CodexCliRuntimeAdapter,
   NodeProcessRunner,
   WorkspaceManager,
-  dispatchPersistedReadyIssue
+  executeDispatchAction,
+  scanReadyDispatchActions
 } from "@vagrant/core/node";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
@@ -18,30 +19,71 @@ export async function POST(request: NextRequest) {
   const runner = new NodeProcessRunner();
   const store = await getWorkspaceStore();
   const runtime = createRuntimeAdapter(runtimeKind, runner);
-  const dispatchInput = {
+  const scanResult = await scanReadyDispatchActions({
     store,
     rootIssueId,
-    repositoryId,
-    triggerEventId: `manual-${Date.now()}`,
-    runtimeKind,
-    runtime,
-    provider: new MockProviderAdapter()
-  };
+    triggerEventId: `manual-${rootIssueId}`
+  });
+  const startAction = scanResult.actions.find((action) => action.kind === "start_agent_run");
 
-  await dispatchPersistedReadyIssue(runtimeKind === RuntimeKind.Mock
-    ? {
-      ...dispatchInput,
-      workingDirectory: `/mock/workspaces/${rootIssueId}`
-    }
-    : {
-      ...dispatchInput,
-      workspaceManager: new WorkspaceManager({
-        runner,
-        worktreesDir: process.env.VAGRANT_WORKTREES_DIR ?? "/tmp/vagrant-worktrees"
-      })
+  if (startAction) {
+    await executeDispatchAction({
+      store,
+      rootIssueId,
+      actionId: startAction.id,
+      runtimeKind,
+      runtime,
+      provider: new MockProviderAdapter(),
+      workingDirectory: runtimeKind === RuntimeKind.Mock
+        ? `/mock/workspaces/${rootIssueId}`
+        : await prepareWorkspace({
+          store,
+          rootIssueId,
+          repositoryId,
+          runner,
+          worktreesDir: process.env.VAGRANT_WORKTREES_DIR ?? "/tmp/vagrant-worktrees"
+        })
     });
+  }
 
   return NextResponse.redirect(new URL(`/runs?projectId=${encodeURIComponent(projectId)}`, request.url), 303);
+}
+
+async function prepareWorkspace({
+  store,
+  rootIssueId,
+  repositoryId,
+  runner,
+  worktreesDir
+}: {
+  store: Awaited<ReturnType<typeof getWorkspaceStore>>;
+  rootIssueId: string;
+  repositoryId: string;
+  runner: NodeProcessRunner;
+  worktreesDir: string;
+}): Promise<string> {
+  const root = await store.getRootIssue(rootIssueId);
+
+  if (!root) {
+    throw new Error(`Root issue not found: ${rootIssueId}`);
+  }
+
+  const repositories = await store.listRepositories(root.projectId);
+  const repository = repositories.find((item) => item.id === repositoryId);
+
+  if (!repository) {
+    throw new Error(`Repository not found: ${repositoryId}`);
+  }
+
+  const worktree = await new WorkspaceManager({
+    runner,
+    worktreesDir
+  }).ensureRootIssueWorktree({
+    repository,
+    rootIssueId
+  });
+
+  return worktree.workingDirectory;
 }
 
 function readRequiredString(formData: FormData, key: string): string {

@@ -1,5 +1,6 @@
 import {
   AgentRole,
+  type Approval,
   type DispatchAction,
   type Issue,
   type IssueRelation,
@@ -11,6 +12,7 @@ import { flattenIssueTree } from "./issue-tree.js";
 export interface PlanReadyActionsInput {
   root: Issue;
   relations?: IssueRelation[];
+  approvals?: Approval[];
   previousDispatchKeys?: Set<string>;
   triggerEventId: string;
   now?: string;
@@ -44,7 +46,8 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
     }
 
     const approvalReason = approvalReasonForIssue(issue);
-    const actionKind = approvalReason ? "request_approval" : "start_agent_run";
+    const approvedApproval = approvalReason ? findApprovedApproval(input.approvals ?? [], issue, approvalReason) : null;
+    const actionKind = approvalReason && !approvedApproval ? "request_approval" : "start_agent_run";
     const idempotencyKey = createDispatchIdempotencyKey(input.root.id, issue, input.triggerEventId, actionKind);
 
     if (previousDispatchKeys.has(idempotencyKey)) {
@@ -58,7 +61,7 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
       issueId: issue.id,
       kind: actionKind,
       status: "pending",
-      payload: approvalReason
+      payload: actionKind === "request_approval"
         ? {
           risk: "high",
           reason: approvalReason,
@@ -67,7 +70,8 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
         }
         : {
           agentRole: issue.ownerAgentRole ?? AgentRole.CEO,
-          issueType: issue.type
+          issueType: issue.type,
+          ...(approvedApproval ? { approvalId: approvedApproval.id } : {})
         },
       idempotencyKey,
       createdAt: now,
@@ -79,6 +83,14 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
     actions,
     blockedIssueIds
   };
+}
+
+function findApprovedApproval(approvals: Approval[], issue: Issue, reason: string): Approval | null {
+  return approvals.find((approval) =>
+    approval.issueId === issue.id &&
+    approval.reason === reason &&
+    approval.status === "approved"
+  ) ?? null;
 }
 
 function dependenciesAreDone(issue: Issue, relations: IssueRelation[], issueById: Map<string, Issue>): boolean {

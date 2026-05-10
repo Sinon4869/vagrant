@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { planReadyActions } from "../action-planner.js";
-import { type IssueRelation, IssueStatus, IssueType } from "../domain.js";
+import { AgentRole, type Approval, type IssueRelation, IssueStatus, IssueType } from "../domain.js";
 import { planIssueTree } from "../rule-planner.js";
 
 describe("planReadyActions", () => {
@@ -150,6 +150,53 @@ describe("planReadyActions", () => {
       })
     ]);
   });
+
+  it("plans a start action for an approved high risk issue", () => {
+    const root = planIssueTree({
+      projectId: "project-1",
+      rootIssueId: "root-1",
+      title: "Run database migration",
+      description: "Change schema",
+      complexity: "medium",
+      area: "backend",
+      now: "2026-05-10T00:00:00.000Z"
+    });
+    const databaseIssue = {
+      ...root.children[0]!,
+      type: IssueType.Database,
+      ownerAgentRole: AgentRole.Database
+    };
+
+    const result = planReadyActions({
+      root: {
+        ...root,
+        children: [databaseIssue]
+      },
+      approvals: [
+        approval({
+          issueId: databaseIssue.id,
+          status: "approved"
+        })
+      ],
+      previousDispatchKeys: new Set([
+        [root.id, databaseIssue.id, AgentRole.Database, "event-1", "approval"].join(":")
+      ]),
+      triggerEventId: "event-1",
+      now: "2026-05-10T00:00:00.000Z"
+    });
+
+    expect(result.actions).toEqual([
+      expect.objectContaining({
+        issueId: databaseIssue.id,
+        kind: "start_agent_run",
+        payload: expect.objectContaining({
+          agentRole: AgentRole.Database,
+          approvalId: "approval-1"
+        }),
+        idempotencyKey: [root.id, databaseIssue.id, AgentRole.Database, "event-1", "run"].join(":")
+      })
+    ]);
+  });
 });
 
 function relation(sourceIssueId: string, targetIssueId: string): IssueRelation {
@@ -161,5 +208,24 @@ function relation(sourceIssueId: string, targetIssueId: string): IssueRelation {
     targetIssueId,
     kind: "depends_on",
     createdAt: "2026-05-10T00:00:00.000Z"
+  };
+}
+
+function approval(input: Pick<Approval, "issueId" | "status">): Approval {
+  return {
+    id: "approval-1",
+    projectId: "project-1",
+    rootIssueId: "root-1",
+    issueId: input.issueId,
+    dispatchActionId: "dispatch-1",
+    status: input.status,
+    risk: "high",
+    reason: "database_migration",
+    requestedBy: AgentRole.Database,
+    decidedBy: input.status === "approved" ? "local-operator" : null,
+    decisionNote: null,
+    createdAt: "2026-05-10T00:00:00.000Z",
+    updatedAt: "2026-05-10T00:00:00.000Z",
+    decidedAt: input.status === "approved" ? "2026-05-10T00:00:00.000Z" : null
   };
 }
