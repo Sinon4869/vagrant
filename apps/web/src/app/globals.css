@@ -13,7 +13,7 @@ body {
   min-height: 100vh;
   background: #f7f8fa;
   color: #171717;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 a {
@@ -22,40 +22,110 @@ a {
 }
 
 .app-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #f7f8fa;
 }
 
-.app-header {
-  position: sticky;
+.app-sider {
+  position: sticky !important;
   top: 0;
-  z-index: 10;
+  height: 100dvh;
+  background: #ffffff;
+  border-right: 1px solid #d9dde3;
+  overflow: auto;
+}
+
+.sider-brand {
   display: flex;
   align-items: center;
-  gap: 24px;
-  height: 56px;
-  padding: 0 24px;
-  background: #ffffff;
-  border-bottom: 1px solid #d9dde3;
+  justify-content: space-between;
+  gap: 12px;
+  height: 64px;
+  padding: 0 18px;
+  border-bottom: 1px solid #edf0f3;
 }
 
 .brand-link {
-  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 14px;
   font-weight: 700;
   color: #171717;
 }
 
-.top-nav {
-  flex: 1 1 auto;
+.project-switcher {
+  margin: 16px;
+  padding: 14px;
+  background: #f7f8fa;
+  border: 1px solid #e5e8ec;
+  border-radius: 8px;
+}
+
+.project-switcher h5 {
+  margin: 4px 0;
+}
+
+.project-path {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.side-nav {
+  border-inline-end: 0 !important;
+  padding: 4px 10px;
+}
+
+.side-nav .ant-menu-item {
+  margin-inline: 0;
+  width: 100%;
+}
+
+.sider-footer {
+  margin: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f3;
+}
+
+.main-layout {
   min-width: 0;
-  border-bottom: 0;
+  background: #f7f8fa;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+  padding: 12px 28px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #d9dde3;
 }
 
 .app-content {
-  width: min(1280px, calc(100vw - 48px));
+  width: min(1280px, calc(100vw - 312px));
   margin: 0 auto;
-  padding: 24px 0;
+  padding: 24px 0 40px;
+}
+
+.page-header h2,
+.page-header .ant-typography {
+  margin-bottom: 0;
+}
+
+.page-header h2 {
+  margin-top: 0;
+}
+
+.ant-table-wrapper {
+  overflow-x: auto;
 }
 
 .issue-tree-title {
@@ -64,4 +134,41 @@ a {
   justify-content: space-between;
   gap: 12px;
   width: 100%;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    display: block;
+  }
+
+  .app-sider {
+    position: relative !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #d9dde3;
+  }
+
+  .side-nav {
+    display: block;
+    padding-bottom: 12px;
+  }
+
+  .sider-footer {
+    display: none;
+  }
+
+  .app-topbar {
+    position: relative;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .app-content {
+    width: calc(100vw - 32px);
+    padding: 16px 0 32px;
+  }
 }
