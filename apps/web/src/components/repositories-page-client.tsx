@@ -3,7 +3,6 @@
 import { BranchesOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Form, Input, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { addRepositoryAction } from "@/app/repositories/actions";
 import { PageHeader } from "@/components/page-header";
 import { type RepositoryRow, type RepositoryWorkspaceView } from "@/lib/workspace-store";
 
@@ -46,7 +45,7 @@ export function RepositoriesPageClient({ view }: { view: RepositoryWorkspaceView
       />
 
       <Card title="Add repository" extra={<PlusOutlined />}>
-        <Form action={addRepositoryAction} layout="vertical" className="repository-form">
+        <Form action="/repositories/create" method="post" layout="vertical" className="repository-form">
           <Form.Item label="Name" name="name" rules={[{ required: true }]}>
             <Input name="name" placeholder="vagrant-services" />
           </Form.Item>

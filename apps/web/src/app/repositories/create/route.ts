@@ -1,6 +1,4 @@
-"use server";
-
-import { revalidatePath } from "next/cache";
+import { NextResponse, type NextRequest } from "next/server";
 import { type RepositoryProviderType, createRepositoryConfig } from "@vagrant/core";
 import { DEFAULT_PROJECT_ID, getWorkspaceStore } from "@/lib/workspace-store";
 
@@ -13,7 +11,8 @@ const providerTypes = new Set<RepositoryProviderType>([
   "local_only"
 ]);
 
-export async function addRepositoryAction(formData: FormData): Promise<void> {
+export async function POST(request: NextRequest) {
+  const formData = await request.formData();
   const name = readRequiredString(formData, "name");
   const localPath = readRequiredString(formData, "localPath");
   const providerType = readProviderType(formData);
@@ -35,7 +34,7 @@ export async function addRepositoryAction(formData: FormData): Promise<void> {
     })
   );
 
-  revalidatePath("/repositories");
+  return NextResponse.redirect(new URL("/repositories", request.url), 303);
 }
 
 function readRequiredString(formData: FormData, key: string): string {

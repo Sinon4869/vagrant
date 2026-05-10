@@ -82,4 +82,4 @@ Set `VAGRANT_RUNTIME_DIR` before running the web app to store state somewhere el
 VAGRANT_RUNTIME_DIR=/Users/asuka/Documents/vagrant/.vagrant/runtime pnpm dev
 ```
 
-When the store is empty, the web app seeds the `vagrant` project, its default repository, and the demo root issue. Adding a repository from the page writes a new `RepositoryConfig` record through `LocalStore` and revalidates `/repositories`.
+When the store is empty, the web app seeds the `vagrant` project, its default repository, and the demo root issue. Adding a repository from the page posts to `/repositories/create`, writes a new `RepositoryConfig` record through `LocalStore`, and redirects back to `/repositories`.
