@@ -5,6 +5,7 @@ import {
   RuntimeKind,
   createAgentRun,
   createIssue,
+  createNotificationItem,
   createProject,
   createRepositoryConfig
 } from "../domain.js";
@@ -45,11 +46,26 @@ describe("LocalStore", () => {
         prompt: "Implement backend changes.",
         now
       });
+      const notification = createNotificationItem({
+        id: "notification-1",
+        projectId: project.id,
+        rootIssueId: rootIssue.id,
+        issueId: rootIssue.id,
+        type: "approval_required",
+        title: "Backend run needs approval",
+        body: "The agent requested repository write access.",
+        severity: "high",
+        delivery: "immediate_email",
+        dedupeKey: "project-vagrant:issue-root:approval_required:run-1",
+        emailSentAt: now,
+        now
+      });
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
       await store.upsertRootIssue(rootIssue);
       await store.upsertAgentRun(run);
+      await store.upsertNotification(notification);
       await store.addDispatchKey("issue-root:issue-root:backend_developer:event-1:run");
 
       const reloaded = new LocalStore({ runtimeDir });
@@ -61,6 +77,7 @@ describe("LocalStore", () => {
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.listProjectAgentRuns(project.id)).toEqual([run]);
+      expect(await reloaded.listNotifications(project.id)).toEqual([notification]);
       expect(await reloaded.hasDispatchKey("issue-root:issue-root:backend_developer:event-1:run")).toBe(true);
     });
   });

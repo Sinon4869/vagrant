@@ -1,9 +1,4 @@
-export type NotificationType =
-  | "approval_required"
-  | "blocked"
-  | "failed_after_retry"
-  | "root_issue_completed"
-  | "digest";
+import { type NotificationType } from "./domain.js";
 
 export interface NotificationDecisionInput {
   projectId: string;

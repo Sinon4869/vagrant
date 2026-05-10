@@ -4,6 +4,7 @@ import {
   type AgentRun,
   type Evidence,
   type Issue,
+  type NotificationItem,
   type Project,
   type RepositoryConfig
 } from "./domain.js";
@@ -19,6 +20,7 @@ export interface LocalWorkspaceState {
   repositories: RepositoryConfig[];
   rootIssues: Issue[];
   agentRuns: AgentRun[];
+  notifications: NotificationItem[];
   evidence: Evidence[];
   dispatchKeys: string[];
 }
@@ -29,6 +31,7 @@ const emptyState: LocalWorkspaceState = {
   repositories: [],
   rootIssues: [],
   agentRuns: [],
+  notifications: [],
   evidence: [],
   dispatchKeys: []
 };
@@ -114,6 +117,20 @@ export class LocalStore implements WorkspaceStore {
     }));
   }
 
+  async listNotifications(projectId: string): Promise<NotificationItem[]> {
+    const state = await this.readState();
+    return state.notifications
+      .filter((notification) => notification.projectId === projectId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }
+
+  async upsertNotification(notification: NotificationItem): Promise<void> {
+    await this.updateState((state) => ({
+      ...state,
+      notifications: upsertById(state.notifications, notification)
+    }));
+  }
+
   async appendEvidence(evidence: Evidence[]): Promise<void> {
     await this.updateState((state) => ({
       ...state,
@@ -147,7 +164,13 @@ export class LocalStore implements WorkspaceStore {
 
   private async readState(): Promise<LocalWorkspaceState> {
     const body = await readFile(this.statePath, "utf8");
-    return JSON.parse(body) as LocalWorkspaceState;
+    const state = JSON.parse(body) as Partial<LocalWorkspaceState>;
+
+    return {
+      ...emptyState,
+      ...state,
+      notifications: state.notifications ?? []
+    };
   }
 
   private async writeState(state: LocalWorkspaceState): Promise<void> {

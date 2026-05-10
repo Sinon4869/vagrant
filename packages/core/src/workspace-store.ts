@@ -2,6 +2,7 @@ import {
   type AgentRun,
   type Evidence,
   type Issue,
+  type NotificationItem,
   type Project,
   type RepositoryConfig
 } from "./domain.js";
@@ -18,6 +19,8 @@ export interface WorkspaceStore {
   listAgentRuns(rootIssueId: string): Promise<AgentRun[]>;
   listProjectAgentRuns(projectId: string): Promise<AgentRun[]>;
   upsertAgentRun(run: AgentRun): Promise<void>;
+  listNotifications(projectId: string): Promise<NotificationItem[]>;
+  upsertNotification(notification: NotificationItem): Promise<void>;
   appendEvidence(evidence: Evidence[]): Promise<void>;
   hasDispatchKey(dispatchKey: string): Promise<boolean>;
   listDispatchKeys(): Promise<Set<string>>;

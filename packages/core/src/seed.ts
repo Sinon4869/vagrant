@@ -1,4 +1,4 @@
-import { RuntimeKind, createProject, createRepositoryConfig } from "./domain.js";
+import { RuntimeKind, createNotificationItem, createProject, createRepositoryConfig } from "./domain.js";
 import { aggregateIssueTree } from "./issue-tree.js";
 import { planIssueTree } from "./rule-planner.js";
 
@@ -68,11 +68,25 @@ export function createPersistedDemoState(input: CreatePersistedDemoStateInput) {
     area: "full_stack",
     now
   });
+  const notification = createNotificationItem({
+    id: "notification-vagrant-digest-ready",
+    projectId: project.id,
+    rootIssueId: rootIssue.id,
+    issueId: rootIssue.id,
+    type: "digest",
+    title: "Issue tree is ready for agent assignment",
+    body: "The planner created parent and child issues for the vagrant project.",
+    severity: "normal",
+    delivery: "digest",
+    dedupeKey: `${project.id}:${rootIssue.id}:digest:issue-tree-ready`,
+    now
+  });
 
   return {
     project,
     repository,
     rootIssue,
+    notification,
     defaultRuntimeKind: RuntimeKind.CodexCli
   };
 }

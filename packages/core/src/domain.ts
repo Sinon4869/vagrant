@@ -249,6 +249,68 @@ export interface AgentRun {
   updatedAt: string;
 }
 
+export type NotificationType =
+  | "approval_required"
+  | "blocked"
+  | "failed_after_retry"
+  | "root_issue_completed"
+  | "digest";
+
+export type NotificationSeverity = "normal" | "high";
+
+export type NotificationDelivery = "inbox" | "digest" | "immediate_email";
+
+export interface NotificationItem {
+  id: string;
+  projectId: string;
+  rootIssueId: string | null;
+  issueId: string | null;
+  type: NotificationType;
+  title: string;
+  body: string;
+  severity: NotificationSeverity;
+  delivery: NotificationDelivery;
+  dedupeKey: string;
+  emailSentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateNotificationItemInput {
+  id: string;
+  projectId: string;
+  type: NotificationType;
+  title: string;
+  dedupeKey: string;
+  rootIssueId?: string | null;
+  issueId?: string | null;
+  body?: string;
+  severity?: NotificationSeverity;
+  delivery?: NotificationDelivery;
+  emailSentAt?: string | null;
+  now?: string;
+}
+
+export function createNotificationItem(input: CreateNotificationItemInput): NotificationItem {
+  const now = input.now ?? new Date().toISOString();
+
+  return {
+    id: input.id,
+    projectId: input.projectId,
+    rootIssueId: input.rootIssueId ?? null,
+    issueId: input.issueId ?? null,
+    type: input.type,
+    title: input.title,
+    body: input.body ?? "",
+    severity: input.severity ?? "normal",
+    delivery: input.delivery ?? "digest",
+    dedupeKey: input.dedupeKey,
+    emailSentAt: input.emailSentAt ?? null,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
 export interface CreateAgentRunInput {
   id: string;
   projectId: string;

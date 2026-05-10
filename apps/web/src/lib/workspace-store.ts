@@ -8,11 +8,12 @@ import {
   AgentRole,
   RuntimeKind,
   type Issue,
+  type NotificationItem,
   type RepositoryConfig,
   type RepositoryProviderType,
   createPersistedDemoState
 } from "@vagrant/core";
-import { LocalStore } from "@vagrant/core/node";
+import { LocalStore, PostgresStore, type WorkspaceStore } from "@vagrant/core/node";
 
 export const DEFAULT_PROJECT_ID = "project-vagrant";
 export const DEFAULT_REPOSITORY_ID = "repo-vagrant";
@@ -82,11 +83,42 @@ export interface RunsWorkspaceView {
   runs: RunRow[];
 }
 
+export interface InboxRow {
+  id: string;
+  type: string;
+  title: string;
+  target: string;
+  severity: "High" | "Normal";
+  delivery: string;
+  updatedAt: string;
+}
+
+export interface InboxWorkspaceView {
+  project: {
+    id: string;
+    name: string;
+  };
+  inbox: InboxRow[];
+}
+
 export function getRuntimeDir(): string {
   return process.env.VAGRANT_RUNTIME_DIR ?? join(process.cwd(), ".vagrant", "runtime");
 }
 
-export async function getWorkspaceStore(): Promise<LocalStore> {
+export async function getWorkspaceStore(): Promise<WorkspaceStore> {
+  if (process.env.VAGRANT_STORAGE === "postgres" || process.env.DATABASE_URL) {
+    const connectionString = process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error("DATABASE_URL is required when VAGRANT_STORAGE=postgres");
+    }
+
+    const store = new PostgresStore({ connectionString });
+    await store.initialize();
+    await ensureDefaultWorkspace(store);
+    return store;
+  }
+
   const runtimeDir = getRuntimeDir();
   await mkdir(runtimeDir, { recursive: true });
   const store = new LocalStore({ runtimeDir });
@@ -165,21 +197,57 @@ export async function getRunsWorkspaceView(): Promise<RunsWorkspaceView> {
   };
 }
 
-async function ensureDefaultWorkspace(store: LocalStore): Promise<void> {
-  const existingProject = await store.getProject(DEFAULT_PROJECT_ID);
+export async function getInboxWorkspaceView(): Promise<InboxWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const project = await store.getProject(DEFAULT_PROJECT_ID);
 
-  if (existingProject) {
-    return;
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
   }
 
+  const rootIssues = await store.listRootIssues(project.id);
+  const notifications = await store.listNotifications(project.id);
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name
+    },
+    inbox: notifications.map((notification) => toInboxRow(notification, rootIssues))
+  };
+}
+
+async function ensureDefaultWorkspace(store: WorkspaceStore): Promise<void> {
   const seed = createPersistedDemoState({
     repositoryLocalPath: process.cwd(),
     repositoryRemoteUrl: "https://github.com/Sinon4869/vagrant"
   });
+  const existingProject = await store.getProject(DEFAULT_PROJECT_ID);
+
+  if (existingProject) {
+    const repositories = await store.listRepositories(DEFAULT_PROJECT_ID);
+    const rootIssue = await store.getRootIssue(seed.rootIssue.id);
+    const notifications = await store.listNotifications(DEFAULT_PROJECT_ID);
+
+    if (repositories.length === 0) {
+      await store.upsertRepository(seed.repository);
+    }
+
+    if (!rootIssue) {
+      await store.upsertRootIssue(seed.rootIssue);
+    }
+
+    if (!notifications.some((notification) => notification.id === seed.notification.id)) {
+      await store.upsertNotification(seed.notification);
+    }
+
+    return;
+  }
 
   await store.upsertProject(seed.project);
   await store.upsertRepository(seed.repository);
   await store.upsertRootIssue(seed.rootIssue);
+  await store.upsertNotification(seed.notification);
 }
 
 function toRepositoryRow(repository: RepositoryConfig, linkedRequirements: number): RepositoryRow {
@@ -229,6 +297,20 @@ function toRunRow(run: AgentRun, rootIssues: Issue[], repositories: RepositoryCo
   };
 }
 
+function toInboxRow(notification: NotificationItem, rootIssues: Issue[]): InboxRow {
+  const issue = notification.issueId ? findIssueById(rootIssues, notification.issueId) : null;
+
+  return {
+    id: notification.id,
+    type: notificationTypeLabel(notification.type),
+    title: notification.title,
+    target: issue?.title ?? notification.rootIssueId ?? "Project",
+    severity: notification.severity === "high" ? "High" : "Normal",
+    delivery: deliveryLabel(notification),
+    updatedAt: notification.updatedAt
+  };
+}
+
 function findIssueById(issues: Issue[], issueId: string): Issue | null {
   for (const issue of issues) {
     if (issue.id === issueId) {
@@ -243,6 +325,41 @@ function findIssueById(issues: Issue[], issueId: string): Issue | null {
   }
 
   return null;
+}
+
+function notificationTypeLabel(type: NotificationItem["type"]): string {
+  const labels: Record<NotificationItem["type"], string> = {
+    approval_required: "Approval",
+    blocked: "Blocked",
+    failed_after_retry: "Failed",
+    root_issue_completed: "Completed",
+    digest: "Digest"
+  };
+
+  return labels[type];
+}
+
+function deliveryLabel(notification: NotificationItem): string {
+  if (notification.emailSentAt) {
+    return `Email sent ${formatDateTime(notification.emailSentAt)}`;
+  }
+
+  const labels: Record<NotificationItem["delivery"], string> = {
+    inbox: "Inbox only",
+    digest: "Next digest email",
+    immediate_email: "Immediate email pending"
+  };
+
+  return labels[notification.delivery];
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function agentRoleLabel(role: AgentRole): string {
