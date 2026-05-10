@@ -83,6 +83,11 @@ export class LocalStore {
     return state.rootIssues.find((issue) => issue.id === rootIssueId) ?? null;
   }
 
+  async listRootIssues(projectId: string): Promise<Issue[]> {
+    const state = await this.readState();
+    return state.rootIssues.filter((issue) => issue.projectId === projectId);
+  }
+
   async upsertRootIssue(rootIssue: Issue): Promise<void> {
     await this.updateState((state) => ({
       ...state,

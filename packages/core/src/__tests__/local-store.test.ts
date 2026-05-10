@@ -57,6 +57,7 @@ describe("LocalStore", () => {
 
       expect(await reloaded.getProject(project.id)).toEqual(project);
       expect(await reloaded.listRepositories(project.id)).toEqual([repository]);
+      expect(await reloaded.listRootIssues(project.id)).toEqual([rootIssue]);
       expect(await reloaded.getRootIssue(rootIssue.id)).toEqual(rootIssue);
       expect(await reloaded.listAgentRuns(rootIssue.id)).toEqual([run]);
       expect(await reloaded.hasDispatchKey("issue-root:issue-root:backend_developer:event-1:run")).toBe(true);
