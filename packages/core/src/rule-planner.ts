@@ -10,6 +10,7 @@ export interface PlanIssueTreeInput {
   description: string;
   complexity: RequirementComplexity;
   area: RequirementArea;
+  now?: string;
 }
 
 interface ChildTemplate {
@@ -22,6 +23,7 @@ interface ChildTemplate {
 
 export function planIssueTree(input: PlanIssueTreeInput): Issue {
   const templates = chooseTemplates(input);
+  const now = input.now ?? "2026-05-10T00:00:00.000Z";
   const root = createIssue({
     id: input.rootIssueId,
     projectId: input.projectId,
@@ -33,7 +35,8 @@ export function planIssueTree(input: PlanIssueTreeInput): Issue {
       "Issue tree is complete",
       "Required gates have evidence",
       "Root issue status accurately reflects descendants"
-    ]
+    ],
+    now
   });
 
   return {
@@ -46,50 +49,56 @@ export function planIssueTree(input: PlanIssueTreeInput): Issue {
         title: `${index + 1}. ${template.title}`,
         type: template.type,
         ownerAgentRole: template.ownerAgentRole,
-        acceptanceCriteria: template.acceptanceCriteria
+        acceptanceCriteria: template.acceptanceCriteria,
+        now
       })
     )
   };
 }
 
 function chooseTemplates(input: PlanIssueTreeInput): ChildTemplate[] {
-  if (input.complexity === "small" && input.area === "frontend") {
-    return [frontendTemplate(), reviewTemplate()];
-  }
+  switch (input.area) {
+    case "frontend":
+      if (input.complexity === "small") {
+        return [frontendTemplate(), reviewTemplate()];
+      }
 
-  if (input.area === "full_stack" || input.complexity === "large") {
-    return [
-      productTemplate(),
-      technicalTemplate(),
-      frontendTemplate(),
-      backendTemplate(),
-      reviewTemplate(),
-      qaTemplate(),
-      documentationTemplate()
-    ];
+      return [
+        productTemplate(),
+        frontendTemplate(),
+        reviewTemplate(),
+        qaTemplate(),
+        documentationTemplate()
+      ];
+    case "backend":
+      return [
+        technicalTemplate(),
+        backendTemplate(),
+        reviewTemplate(),
+        qaTemplate(),
+        documentationTemplate()
+      ];
+    case "devops":
+      return [
+        technicalTemplate(),
+        devopsTemplate(),
+        reviewTemplate(),
+        qaTemplate(),
+        documentationTemplate()
+      ];
+    case "documentation":
+      return [documentationTemplate(), reviewTemplate()];
+    case "full_stack":
+      return [
+        productTemplate(),
+        technicalTemplate(),
+        frontendTemplate(),
+        backendTemplate(),
+        reviewTemplate(),
+        qaTemplate(),
+        documentationTemplate()
+      ];
   }
-
-  if (input.area === "backend") {
-    return [
-      technicalTemplate(),
-      backendTemplate(),
-      reviewTemplate(),
-      qaTemplate(),
-      documentationTemplate()
-    ];
-  }
-
-  if (input.area === "devops") {
-    return [
-      technicalTemplate(),
-      devopsTemplate(),
-      reviewTemplate(),
-      qaTemplate(),
-      documentationTemplate()
-    ];
-  }
-
-  return [documentationTemplate(), reviewTemplate()];
 }
 
 function productTemplate(): ChildTemplate {
