@@ -8,6 +8,7 @@ import {
   executeDispatchAction,
   scanReadyDispatchActions
 } from "@vagrant/core/node";
+import { assertRootIssueProject } from "@/lib/route-guards";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
 export async function POST(request: NextRequest) {
@@ -18,6 +19,14 @@ export async function POST(request: NextRequest) {
   const runtimeKind = readRuntimeKind(formData);
   const runner = new NodeProcessRunner();
   const store = await getWorkspaceStore();
+  const rootIssue = await store.getRootIssue(rootIssueId);
+
+  if (!rootIssue) {
+    throw new Error(`Root issue not found: ${rootIssueId}`);
+  }
+
+  assertRootIssueProject(rootIssue, projectId);
+
   const runtime = createRuntimeAdapter(runtimeKind, runner);
   const scanResult = await scanReadyDispatchActions({
     store,

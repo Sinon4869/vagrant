@@ -50,8 +50,11 @@ export async function scanReadyDispatchActions(
   const approvals = root ? await input.store.listApprovals(root.projectId) : [];
   const previousDispatchKeys = await input.store.listDispatchKeys();
   const existingActions = await input.store.listDispatchActions(input.rootIssueId);
+  const reconciledExistingActions = await reconcileApprovalActions(input.store, existingActions, approvals);
   const resumableActions = existingActions.filter(
-    (action) => action.status === "pending" || action.status === "running"
+    (action) =>
+      (action.status === "pending" || action.status === "running") &&
+      (action.kind !== "request_approval" || !approvalIsDecidedForAction(approvals, action))
   );
   if (!input.plannedActions && resumableActions.length > 0) {
     return {
@@ -64,7 +67,12 @@ export async function scanReadyDispatchActions(
       root,
       relations,
       approvals,
-      previousDispatchKeys,
+      previousDispatchKeys: new Set([
+        ...previousDispatchKeys,
+        ...reconciledExistingActions
+          .filter((action) => action.kind === "request_approval" && approvalIsApprovedForAction(approvals, action))
+          .map((action) => action.idempotencyKey)
+      ]),
       triggerEventId: input.triggerEventId,
       ...(input.now ? { now: input.now } : {})
     }).actions
@@ -86,6 +94,52 @@ export async function scanReadyDispatchActions(
     actions,
     approvals: createdApprovals
   };
+}
+
+async function reconcileApprovalActions(
+  store: WorkspaceStore,
+  actions: DispatchAction[],
+  approvals: Approval[]
+): Promise<DispatchAction[]> {
+  const reconciled: DispatchAction[] = [];
+
+  for (const action of actions) {
+    if (action.kind !== "request_approval" || action.status !== "pending") {
+      reconciled.push(action);
+      continue;
+    }
+
+    const approval = approvals.find((item) => item.dispatchActionId === action.id);
+
+    if (!approval || approval.status === "pending") {
+      reconciled.push(action);
+      continue;
+    }
+
+    const updatedAction = {
+      ...action,
+      status: approval.status === "approved" ? "succeeded" as const : "cancelled" as const,
+      updatedAt: approval.updatedAt
+    };
+    await store.upsertDispatchAction(updatedAction);
+    reconciled.push(updatedAction);
+  }
+
+  return reconciled;
+}
+
+function approvalIsDecidedForAction(approvals: Approval[], action: DispatchAction): boolean {
+  return approvals.some((approval) =>
+    approval.dispatchActionId === action.id &&
+    (approval.status === "approved" || approval.status === "rejected")
+  );
+}
+
+function approvalIsApprovedForAction(approvals: Approval[], action: DispatchAction): boolean {
+  return approvals.some((approval) =>
+    approval.dispatchActionId === action.id &&
+    approval.status === "approved"
+  );
 }
 
 export async function executeDispatchAction(

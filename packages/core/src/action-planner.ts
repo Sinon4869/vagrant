@@ -55,7 +55,7 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
     }
 
     actions.push({
-      id: `dispatch-${issue.id}-${input.triggerEventId}`,
+      id: createDispatchActionId(issue, input.triggerEventId, actionKind),
       projectId: issue.projectId,
       rootIssueId: input.root.id,
       issueId: issue.id,
@@ -83,6 +83,15 @@ export function planReadyActions(input: PlanReadyActionsInput): PlanReadyActions
     actions,
     blockedIssueIds
   };
+}
+
+function createDispatchActionId(
+  issue: Issue,
+  triggerEventId: string,
+  kind: DispatchAction["kind"]
+): string {
+  const suffix = kind === "request_approval" ? "approval" : "run";
+  return `dispatch-${issue.id}-${triggerEventId}-${suffix}`;
 }
 
 function findApprovedApproval(approvals: Approval[], issue: Issue, reason: string): Approval | null {

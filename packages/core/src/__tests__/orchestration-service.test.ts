@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LocalStore } from "../local-store.js";
 import { executeDispatchAction, scanReadyDispatchActions } from "../orchestration-service.js";
 import { MockProviderAdapter, MockRuntimeAdapter } from "../adapters.js";
-import { AgentRole, RuntimeKind, createProject, type DispatchAction } from "../domain.js";
+import { AgentRole, RuntimeKind, createProject, decideApproval, type DispatchAction } from "../domain.js";
 import { planIssueTree } from "../rule-planner.js";
 import { withTempRuntimeDir } from "./test-helpers.js";
 
@@ -130,6 +130,139 @@ describe("orchestration service", () => {
     });
   });
 
+  it("plans a run action after a high risk approval is granted without overwriting approval audit", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const root = {
+        ...planIssueTree({
+          projectId: project.id,
+          rootIssueId: "root-1",
+          title: "Change schema",
+          description: "Add a database migration",
+          complexity: "medium",
+          area: "backend",
+          now: "2026-05-10T00:00:00.000Z"
+        }),
+        children: []
+      };
+      const databaseIssue = {
+        ...planIssueTree({
+          projectId: project.id,
+          rootIssueId: "root-1",
+          title: "Change schema",
+          description: "Add a database migration",
+          complexity: "medium",
+          area: "backend",
+          now: "2026-05-10T00:00:00.000Z"
+        }).children[0]!,
+        type: "database" as const,
+        ownerAgentRole: AgentRole.Database
+      };
+      const rootWithDatabase = {
+        ...root,
+        children: [databaseIssue]
+      };
+      await store.upsertProject(project);
+      await store.upsertRootIssue(rootWithDatabase);
+
+      const approvalScan = await scanReadyDispatchActions({
+        store,
+        rootIssueId: root.id,
+        triggerEventId: "event-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const approvalAction = approvalScan.actions[0]!;
+      const pendingApproval = (await store.listApprovals(project.id))[0]!;
+      await store.upsertApproval(decideApproval(pendingApproval, {
+        decision: "approved",
+        decidedBy: "local-operator",
+        now: "2026-05-10T01:00:00.000Z"
+      }));
+
+      const runScan = await scanReadyDispatchActions({
+        store,
+        rootIssueId: root.id,
+        triggerEventId: "event-1",
+        now: "2026-05-10T01:00:00.000Z"
+      });
+
+      const savedActions = await store.listDispatchActions(root.id);
+      expect(runScan.actions).toEqual([
+        expect.objectContaining({
+          kind: "start_agent_run",
+          issueId: databaseIssue.id,
+          payload: expect.objectContaining({
+            approvalId: pendingApproval.id
+          })
+        })
+      ]);
+      expect(savedActions).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: approvalAction.id,
+          kind: "request_approval",
+          status: "succeeded"
+        }),
+        expect.objectContaining({
+          kind: "start_agent_run",
+          status: "pending"
+        })
+      ]));
+      expect(new Set(savedActions.map((action) => action.id)).size).toBe(savedActions.length);
+    });
+  });
+
+  it("cancels approval actions after rejection and does not start the run", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const root = databaseRoot(project.id);
+      await store.upsertProject(project);
+      await store.upsertRootIssue(root);
+
+      const approvalScan = await scanReadyDispatchActions({
+        store,
+        rootIssueId: root.id,
+        triggerEventId: "event-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const approvalAction = approvalScan.actions[0]!;
+      const pendingApproval = (await store.listApprovals(project.id))[0]!;
+      await store.upsertApproval(decideApproval(pendingApproval, {
+        decision: "rejected",
+        decidedBy: "local-operator",
+        now: "2026-05-10T01:00:00.000Z"
+      }));
+
+      const runScan = await scanReadyDispatchActions({
+        store,
+        rootIssueId: root.id,
+        triggerEventId: "event-1",
+        now: "2026-05-10T01:00:00.000Z"
+      });
+
+      const savedActions = await store.listDispatchActions(root.id);
+      expect(runScan.actions).toEqual([]);
+      expect(savedActions).toEqual([
+        expect.objectContaining({
+          id: approvalAction.id,
+          kind: "request_approval",
+          status: "cancelled"
+        })
+      ]);
+    });
+  });
+
   it("executes a pending start action and persists run, evidence, issue status, and action status", async () => {
     await withTempRuntimeDir(async (runtimeDir) => {
       const store = new LocalStore({ runtimeDir });
@@ -196,5 +329,28 @@ function startAction(projectId: string, rootIssueId: string, issueId: string): D
     idempotencyKey: `${rootIssueId}:${issueId}:frontend_developer:event-1:run`,
     createdAt: "2026-05-10T00:00:00.000Z",
     updatedAt: "2026-05-10T00:00:00.000Z"
+  };
+}
+
+function databaseRoot(projectId: string) {
+  const planned = planIssueTree({
+    projectId,
+    rootIssueId: "root-1",
+    title: "Change schema",
+    description: "Add a database migration",
+    complexity: "medium",
+    area: "backend",
+    now: "2026-05-10T00:00:00.000Z"
+  });
+
+  return {
+    ...planned,
+    children: [
+      {
+        ...planned.children[0]!,
+        type: "database" as const,
+        ownerAgentRole: AgentRole.Database
+      }
+    ]
   };
 }

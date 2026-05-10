@@ -5,6 +5,7 @@ import {
   planIssueTree
 } from "@vagrant/core";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
+import { createUniqueRootIssueId } from "@/lib/route-guards";
 
 const complexities = new Set<RequirementComplexity>(["small", "medium", "large"]);
 const areas = new Set<RequirementArea>(["frontend", "backend", "full_stack", "devops", "documentation"]);
@@ -16,9 +17,10 @@ export async function POST(request: NextRequest) {
   const complexity = readComplexity(formData);
   const area = readArea(formData);
   const projectId = resolveProjectId(readOptionalString(formData, "projectId"));
-  const rootIssueId = `issue-${slugify(title)}`;
 
   const store = await getWorkspaceStore();
+  const existingRootIssues = await store.listRootIssues(projectId);
+  const rootIssueId = createUniqueRootIssueId(title, new Set(existingRootIssues.map((issue) => issue.id)));
   const rootIssue = planIssueTree({
     projectId,
     rootIssueId,
@@ -71,12 +73,4 @@ function readArea(formData: FormData): RequirementArea {
   }
 
   return value as RequirementArea;
-}
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
