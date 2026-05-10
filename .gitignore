@@ -9,4 +9,5 @@ coverage
 !.env.example
 .DS_Store
 .vagrant/runtime
+**/.vagrant/runtime
 .worktrees/
