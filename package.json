@@ -5,6 +5,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "pnpm --filter @vagrant/web dev",
+    "dev:test": "VAGRANT_RUNTIME_DIR=.vagrant/runtime pnpm --filter @vagrant/web dev:test",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "lint": "pnpm -r lint",

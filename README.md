@@ -53,7 +53,15 @@ Run the web app:
 pnpm dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3100`.
+
+Run the web app with the shared local test runtime:
+
+```bash
+pnpm dev:test
+```
+
+`pnpm dev:test` uses `VAGRANT_RUNTIME_DIR=.vagrant/runtime` and the same fixed URL: `http://localhost:3100`.
 
 ## Phase 2 Runtime Foundation
 
