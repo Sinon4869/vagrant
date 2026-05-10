@@ -4,6 +4,8 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   aggregateIssueTree,
+  type AgentRun,
+  AgentRole,
   RuntimeKind,
   type Issue,
   type RepositoryConfig,
@@ -57,6 +59,27 @@ export interface RequirementsWorkspaceView {
   };
   requirements: RequirementRow[];
   repositories: RepositoryRow[];
+}
+
+export interface RunRow {
+  id: string;
+  issueId: string;
+  issue: string;
+  agent: string;
+  runtime: string;
+  repository: string;
+  status: AgentRun["status"];
+  evidence: string;
+  updatedAt: string;
+}
+
+export interface RunsWorkspaceView {
+  project: {
+    id: string;
+    name: string;
+  };
+  requirements: RequirementRow[];
+  runs: RunRow[];
 }
 
 export function getRuntimeDir(): string {
@@ -120,6 +143,28 @@ export async function getPersistedRootIssue(issueId: string): Promise<Issue | nu
   return store.getRootIssue(issueId);
 }
 
+export async function getRunsWorkspaceView(): Promise<RunsWorkspaceView> {
+  const store = await getWorkspaceStore();
+  const project = await store.getProject(DEFAULT_PROJECT_ID);
+
+  if (!project) {
+    throw new Error(`Project not found after workspace initialization: ${DEFAULT_PROJECT_ID}`);
+  }
+
+  const repositories = await store.listRepositories(project.id);
+  const rootIssues = await store.listRootIssues(project.id);
+  const runs = await store.listProjectAgentRuns(project.id);
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name
+    },
+    requirements: rootIssues.map((issue) => toRequirementRow(issue, repositories)),
+    runs: runs.map((run) => toRunRow(run, rootIssues, repositories))
+  };
+}
+
 async function ensureDefaultWorkspace(store: LocalStore): Promise<void> {
   const existingProject = await store.getProject(DEFAULT_PROJECT_ID);
 
@@ -166,6 +211,68 @@ function toRequirementRow(issue: Issue, repositories: RepositoryConfig[]): Requi
     knowledgeIds: issue.id === "issue-vagrant-knowledge" ? ["wiki-agent-context", "wiki-runtime-policy"] : [],
     updatedAt: issue.updatedAt
   };
+}
+
+function toRunRow(run: AgentRun, rootIssues: Issue[], repositories: RepositoryConfig[]): RunRow {
+  const issue = findIssueById(rootIssues, run.issueId);
+
+  return {
+    id: run.id,
+    issueId: run.issueId,
+    issue: issue?.title ?? run.issueId,
+    agent: agentRoleLabel(run.agentRole),
+    runtime: runtimeLabel(run.runtimeKind),
+    repository: repositories[0]?.name ?? "unassigned",
+    status: run.status,
+    evidence: run.evidenceIds.length > 0 ? `${run.evidenceIds.length} evidence items` : "Runtime log recorded",
+    updatedAt: run.updatedAt
+  };
+}
+
+function findIssueById(issues: Issue[], issueId: string): Issue | null {
+  for (const issue of issues) {
+    if (issue.id === issueId) {
+      return issue;
+    }
+
+    const found = findIssueById(issue.children, issueId);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function agentRoleLabel(role: AgentRole): string {
+  const labels: Record<AgentRole, string> = {
+    [AgentRole.CEO]: "CEO",
+    [AgentRole.CTO]: "CTO",
+    [AgentRole.ProductManager]: "Product Manager",
+    [AgentRole.UxUi]: "UX/UI",
+    [AgentRole.EngineeringLead]: "Engineering Lead",
+    [AgentRole.FrontendDeveloper]: "Frontend Developer",
+    [AgentRole.BackendDeveloper]: "Backend Developer",
+    [AgentRole.Database]: "Database",
+    [AgentRole.DevOps]: "DevOps",
+    [AgentRole.CodeReview]: "Code Review",
+    [AgentRole.QA]: "QA",
+    [AgentRole.Documentation]: "Documentation",
+    [AgentRole.ReleaseManager]: "Release Manager"
+  };
+
+  return labels[role];
+}
+
+function runtimeLabel(runtimeKind: RuntimeKind): string {
+  const labels: Record<RuntimeKind, string> = {
+    [RuntimeKind.Mock]: "Mock Runtime",
+    [RuntimeKind.CodexCli]: "Codex CLI",
+    [RuntimeKind.ClaudeCli]: "Claude CLI"
+  };
+
+  return labels[runtimeKind];
 }
 
 export function providerLabel(providerType: RepositoryProviderType): string {
