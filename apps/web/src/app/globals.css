@@ -448,7 +448,8 @@ a {
 }
 
 .requirements-queue-page,
-.runs-audit-page {
+.runs-audit-page,
+.repositories-control-page {
   width: 100%;
 }
 
@@ -467,11 +468,13 @@ a {
   overflow: hidden;
 }
 
+.ant-drawer .repository-form,
 .ant-drawer .requirement-form {
   display: grid;
   grid-template-columns: 1fr;
 }
 
+.ant-drawer .repository-form button,
 .ant-drawer .requirement-form button {
   width: 100%;
 }

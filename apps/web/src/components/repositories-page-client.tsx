@@ -1,7 +1,8 @@
 "use client";
 
-import { BranchesOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Card, Form, Input, Select, Space, Table, Tag, Typography } from "antd";
+import { useState } from "react";
+import { BranchesOutlined, CheckCircleOutlined, FolderOpenOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Drawer, Empty, Flex, Form, Input, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
 import { type RepositoryRow, type RepositoryWorkspaceView } from "@/lib/workspace-store";
@@ -9,14 +10,15 @@ import { type RepositoryRow, type RepositoryWorkspaceView } from "@/lib/workspac
 const { Text } = Typography;
 
 export function RepositoriesPageClient({ view }: { view: RepositoryWorkspaceView }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const columns: ColumnsType<RepositoryRow> = [
     {
       title: "Repository",
       dataIndex: "name",
       render: (name, record) => (
-        <Space direction="vertical" size={0}>
+        <Space direction="vertical" size={2}>
           <Text strong>{name}</Text>
-          <Text type="secondary">{record.localPath}</Text>
+          <Text type="secondary" className="mono-text">{record.localPath}</Text>
         </Space>
       )
     },
@@ -24,27 +26,69 @@ export function RepositoriesPageClient({ view }: { view: RepositoryWorkspaceView
     {
       title: "Remote",
       dataIndex: "remoteUrl",
-      render: (url) => (url ? <Text copyable>{url}</Text> : <Text type="secondary">Local only</Text>)
+      render: (url) => (url ? <Text copyable className="mono-text">{url}</Text> : <Text type="secondary">Local only</Text>)
     },
-    { title: "Base", dataIndex: "baseBranch", width: 100 },
+    { title: "Base", dataIndex: "baseBranch", width: 100, render: (branch) => <Text className="mono-text">{branch}</Text> },
     { title: "Requirements", dataIndex: "linkedRequirements", width: 130 },
     {
       title: "Health",
       dataIndex: "health",
-      width: 130,
-      render: (health) => <Tag color={health === "Configured" ? "success" : "default"}>{health}</Tag>
+      width: 210,
+      render: (health, record) => (
+        <Space size={6} wrap>
+          <Tag icon={<FolderOpenOutlined />} color="success">Path tracked</Tag>
+          <Tag icon={record.remoteUrl ? <LinkOutlined /> : <CheckCircleOutlined />} color={health === "Configured" ? "success" : "default"}>
+            {health}
+          </Tag>
+        </Space>
+      )
     }
   ];
 
   return (
-    <Space direction="vertical" size={24} style={{ width: "100%" }}>
+    <Space direction="vertical" size={20} className="repositories-control-page">
       <PageHeader
         eyebrow={`Project ${view.project.name}`}
-        title="Repositories"
+        title="Repositories Control"
         description="Repositories are configurable per project and can point to GitHub, GitLab, Gitea, Bitbucket, a private git server, or a local checkout."
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)}>
+            Add repository
+          </Button>
+        }
       />
 
-      <Card title="Add repository" extra={<PlusOutlined />}>
+      <section className="queue-toolbar">
+        <Flex align="center" justify="space-between" gap={16} wrap>
+          <Space size={8} wrap>
+            <Tag icon={<BranchesOutlined />}>{view.repositories.length} configured repositories</Tag>
+            <Tag color={view.repositories.some((repo) => repo.remoteUrl) ? "success" : "default"}>
+              {view.repositories.filter((repo) => repo.remoteUrl).length} remote-backed
+            </Tag>
+          </Space>
+          <Text type="secondary">Provider can be any Git service or local-only.</Text>
+        </Flex>
+      </section>
+
+      <section className="queue-panel">
+        {view.repositories.length === 0 ? (
+          <Empty description="No repositories configured for this project.">
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerOpen(true)}>
+              Add repository
+            </Button>
+          </Empty>
+        ) : (
+          <Table rowKey="id" columns={columns} dataSource={view.repositories} pagination={false} />
+        )}
+      </section>
+
+      <Drawer
+        title="Add repository"
+        open={drawerOpen}
+        width={560}
+        onClose={() => setDrawerOpen(false)}
+        destroyOnClose
+      >
         <Form action="/repositories/create" method="post" layout="vertical" className="repository-form">
           <input type="hidden" name="projectId" value={view.project.id} />
           <Form.Item label="Name" name="name" rules={[{ required: true }]}>
@@ -78,11 +122,7 @@ export function RepositoriesPageClient({ view }: { view: RepositoryWorkspaceView
             Add repository
           </Button>
         </Form>
-      </Card>
-
-      <Card title="Configured repositories" extra={<BranchesOutlined />}>
-        <Table rowKey="id" columns={columns} dataSource={view.repositories} pagination={false} />
-      </Card>
+      </Drawer>
     </Space>
   );
 }
