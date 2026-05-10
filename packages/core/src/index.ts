@@ -5,3 +5,4 @@ export * from "./adapters.js";
 export * from "./dispatcher.js";
 export * from "./notifications.js";
 export * from "./seed.js";
+export * from "./local-store.js";
