@@ -81,6 +81,7 @@ export interface RunRow {
   runtime: string;
   repository: string;
   status: AgentRun["status"];
+  summary: string;
   evidence: string;
   updatedAt: string;
 }
@@ -640,9 +641,15 @@ function toRunRow(run: AgentRun, rootIssues: Issue[], repositories: RepositoryCo
     runtime: runtimeLabel(run.runtimeKind),
     repository: repositories[0]?.name ?? "unassigned",
     status: run.status,
+    summary: run.summary || latestLogSummary(run),
     evidence: run.evidenceIds.length > 0 ? `${run.evidenceIds.length} evidence items` : "Runtime log recorded",
     updatedAt: run.updatedAt
   };
+}
+
+function latestLogSummary(run: AgentRun): string {
+  const latestLog = run.logs.slice().reverse().find((log) => log.body.trim().length > 0);
+  return latestLog ? latestLog.body.slice(0, 160) : "No runtime summary recorded";
 }
 
 function toInboxRow(notification: NotificationItem, rootIssues: Issue[]): InboxRow {

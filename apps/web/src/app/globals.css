@@ -542,27 +542,35 @@ a {
 }
 
 @media (max-width: 900px) {
-  .app-shell {
-    display: block;
-  }
-
   .app-sider {
-    position: relative !important;
-    width: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid #d9dde3;
+    width: 72px !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
   }
 
-  .side-nav {
-    display: block;
-    padding-bottom: 0;
-  }
-
+  .brand-link span,
+  .sider-brand .ant-tag,
+  .project-switcher,
+  .nav-group-label,
+  .side-nav .ant-menu-title-content,
   .sider-footer {
     display: none;
+  }
+
+  .sider-brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .nav-groups {
+    gap: 10px;
+    padding: 12px 8px;
+  }
+
+  .side-nav .ant-menu-item {
+    display: flex;
+    justify-content: center;
+    padding-inline: 0 !important;
   }
 
   .app-topbar {
@@ -573,7 +581,7 @@ a {
   }
 
   .app-content {
-    width: calc(100vw - 32px);
+    width: calc(100vw - 104px);
     padding: 16px 0 32px;
   }
 

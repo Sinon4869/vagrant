@@ -11,6 +11,7 @@ import {
   createAgentRun
 } from "./domain.js";
 import { mapIssueTree } from "./dispatcher.js";
+import { buildIssuePrompt } from "./runtime-adapters.js";
 import { type WorkspaceStore } from "./workspace-store.js";
 
 export interface ScanReadyDispatchActionsInput {
@@ -258,7 +259,11 @@ export async function executeDispatchAction(
     agentRole: isAgentRole(action.payload.agentRole) ? action.payload.agentRole : issue.ownerAgentRole ?? AgentRole.EngineeringLead,
     runtimeKind: input.runtimeKind,
     workingDirectory: input.workingDirectory,
-    prompt: `Issue: ${issue.title}`,
+    prompt: buildIssuePrompt({
+      runId: `run-${action.issueId}-${action.createdAt.replace(/[^0-9A-Za-z]/g, "")}`,
+      issue,
+      workingDirectory: input.workingDirectory
+    }),
     now
   });
 
@@ -318,10 +323,19 @@ export async function executeDispatchAction(
       run: succeededRun
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Runtime failed";
     const failedRun: AgentRun = {
       ...run,
       status: "failed",
-      summary: error instanceof Error ? error.message : "Runtime failed",
+      summary: errorMessage,
+      logs: [
+        ...run.logs,
+        {
+          stream: "system",
+          body: errorMessage,
+          createdAt: now
+        }
+      ],
       startedAt: now,
       completedAt: now,
       updatedAt: now

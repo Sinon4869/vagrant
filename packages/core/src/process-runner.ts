@@ -6,6 +6,7 @@ export interface ProcessRunInput {
   cwd: string;
   env?: NodeJS.ProcessEnv;
   input?: string;
+  timeoutMs?: number;
 }
 
 export interface ProcessRunResult {
@@ -28,6 +29,30 @@ export class NodeProcessRunner implements ProcessRunner {
       });
       let stdout = "";
       let stderr = "";
+      let settled = false;
+      let timeout: NodeJS.Timeout | undefined;
+
+      const settle = (callback: () => void) => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+
+        callback();
+      };
+
+      if (input.timeoutMs !== undefined) {
+        timeout = setTimeout(() => {
+          settle(() => {
+            child.kill();
+            reject(new Error(`Process timeout after ${input.timeoutMs}ms`));
+          });
+        }, input.timeoutMs);
+      }
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
@@ -37,12 +62,18 @@ export class NodeProcessRunner implements ProcessRunner {
       child.stderr.on("data", (chunk: string) => {
         stderr += chunk;
       });
-      child.on("error", reject);
+      child.on("error", (error) => {
+        settle(() => {
+          reject(error);
+        });
+      });
       child.on("close", (exitCode: number | null) => {
-        resolve({
-          exitCode: exitCode ?? 1,
-          stdout,
-          stderr
+        settle(() => {
+          resolve({
+            exitCode: exitCode ?? 1,
+            stdout,
+            stderr
+          });
         });
       });
 

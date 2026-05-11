@@ -59,6 +59,11 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
       width: 120,
       render: (status) => <StatusBadge status={status} kind="run" compact />
     },
+    {
+      title: "Summary",
+      dataIndex: "summary",
+      render: (summary) => <Text>{summary}</Text>
+    },
     { title: "Evidence", dataIndex: "evidence" },
     { title: "Updated", dataIndex: "updatedAt", width: 180 }
   ];

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { LocalStore } from "../local-store.js";
 import { executeDispatchAction, runOrchestrationTick, scanReadyDispatchActions } from "../orchestration-service.js";
-import { MockProviderAdapter, MockRuntimeAdapter } from "../adapters.js";
+import { MockProviderAdapter, MockRuntimeAdapter, type AgentRunInput, type AgentRunResult, type RuntimeAdapter } from "../adapters.js";
 import { AgentRole, RuntimeKind, createProject, decideApproval, type DispatchAction } from "../domain.js";
+import { buildIssuePrompt } from "../runtime-adapters.js";
 import { planIssueTree } from "../rule-planner.js";
 import { withTempRuntimeDir } from "./test-helpers.js";
 
@@ -346,11 +347,80 @@ describe("orchestration service", () => {
       expect(savedRuns[0]).toMatchObject({
         issueId: root.children[0]!.id,
         status: "succeeded",
-        runtimeKind: RuntimeKind.Mock
+        runtimeKind: RuntimeKind.Mock,
+        prompt: buildIssuePrompt({
+          runId: savedRuns[0]!.id,
+          issue: root.children[0]!,
+          workingDirectory: "/mock/workspaces/root-1"
+        })
       });
+      expect(savedRuns[0]?.prompt).toContain(root.children[0]!.id);
+      expect(savedRuns[0]?.prompt).toContain(root.children[0]!.title);
+      expect(savedRuns[0]?.prompt).toContain(root.children[0]!.description);
+      expect(savedRuns[0]?.prompt).toContain(root.children[0]!.type);
+      expect(savedRuns[0]?.prompt).toContain(root.children[0]!.ownerAgentRole!);
+      expect(savedRuns[0]?.prompt).toContain("/mock/workspaces/root-1");
+      expect(savedRuns[0]?.prompt).toContain("Acceptance Criteria");
+      expect(savedRuns[0]?.prompt).toContain("Evidence Requirements");
       expect(savedRoot?.children[0]?.status).toBe("done");
       expect(savedRoot?.children[0]?.evidence[0]?.title).toBe("Mock validation log");
       expect(savedActions.find((item) => item.id === action.id)?.status).toBe("succeeded");
+    });
+  });
+
+  it("persists failed runs with an error log when the runtime throws", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const root = planIssueTree({
+        projectId: project.id,
+        rootIssueId: "root-1",
+        title: "Change button",
+        description: "Change one page button behavior",
+        complexity: "small",
+        area: "frontend",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const action = startAction(project.id, root.id, root.children[0]!.id);
+      await store.upsertProject(project);
+      await store.upsertRootIssue(root);
+      await store.upsertDispatchAction(action);
+
+      const result = await executeDispatchAction({
+        store,
+        actionId: action.id,
+        rootIssueId: root.id,
+        runtimeKind: RuntimeKind.CodexCli,
+        runtime: new ThrowingRuntimeAdapter(new Error("codex exploded")),
+        provider: new MockProviderAdapter(),
+        workingDirectory: "/mock/workspaces/root-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+
+      const savedRuns = await store.listAgentRuns(root.id);
+      const savedActions = await store.listDispatchActions(root.id);
+      expect(result.run?.status).toBe("failed");
+      expect(savedRuns[0]).toMatchObject({
+        status: "failed",
+        summary: "codex exploded",
+        prompt: buildIssuePrompt({
+          runId: savedRuns[0]!.id,
+          issue: root.children[0]!,
+          workingDirectory: "/mock/workspaces/root-1"
+        })
+      });
+      expect(savedRuns[0]?.logs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          stream: "system",
+          body: expect.stringContaining("codex exploded")
+        })
+      ]));
+      expect(savedActions.find((item) => item.id === action.id)?.status).toBe("failed");
     });
   });
 
@@ -443,4 +513,12 @@ function databaseRoot(projectId: string) {
       }
     ]
   };
+}
+
+class ThrowingRuntimeAdapter implements RuntimeAdapter {
+  constructor(private readonly error: Error) {}
+
+  async startRun(_input: AgentRunInput): Promise<AgentRunResult> {
+    throw this.error;
+  }
 }
