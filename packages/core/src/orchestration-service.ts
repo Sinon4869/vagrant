@@ -273,6 +273,14 @@ export async function executeDispatchAction(
       issue,
       workingDirectory: input.workingDirectory
     });
+    const completedIssueStatus = input.runtimeKind === RuntimeKind.Mock ? IssueStatus.Done : IssueStatus.InReview;
+    const reviewLog = completedIssueStatus === IssueStatus.InReview
+      ? [{
+        stream: "system" as const,
+        body: "Runtime completed successfully; issue is waiting for review.",
+        createdAt: now
+      }]
+      : [];
     const succeededRun: AgentRun = {
       ...run,
       status: "succeeded",
@@ -283,7 +291,8 @@ export async function executeDispatchAction(
           stream: "system",
           body: runtimeResult.summary,
           createdAt: now
-        }
+        },
+        ...reviewLog
       ],
       evidenceIds: runtimeResult.evidence.map((evidence) => evidence.id),
       startedAt: now,
@@ -297,7 +306,7 @@ export async function executeDispatchAction(
 
       return {
         ...candidate,
-        status: IssueStatus.Done,
+        status: completedIssueStatus,
         evidence: [...candidate.evidence, ...runtimeResult.evidence],
         updatedAt: now
       };

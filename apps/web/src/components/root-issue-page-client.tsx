@@ -49,7 +49,7 @@ export function RootIssuePageClient({ project, rootIssue, summary }: RootIssuePa
           <StatusBadge status={summary.aggregateStatus} />
           <Progress percent={summary.progress} size="small" />
           <Text type="secondary">
-            {summary.counts.done} done · {summary.counts.blocked} blocked · {summary.total} nodes
+            {summary.counts.done} done · {summary.counts.in_review} in review · {summary.counts.blocked} blocked · {summary.total} nodes
           </Text>
         </div>
       </header>

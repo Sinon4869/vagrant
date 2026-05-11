@@ -424,6 +424,52 @@ describe("orchestration service", () => {
     });
   });
 
+  it("moves real CLI successes into review instead of marking the issue done", async () => {
+    await withTempRuntimeDir(async (runtimeDir) => {
+      const store = new LocalStore({ runtimeDir });
+      await store.initialize();
+      const project = createProject({
+        id: "project-1",
+        name: "Vagrant",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const root = planIssueTree({
+        projectId: project.id,
+        rootIssueId: "root-1",
+        title: "Change button",
+        description: "Change one page button behavior",
+        complexity: "small",
+        area: "frontend",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+      const action = startAction(project.id, root.id, root.children[0]!.id);
+      await store.upsertProject(project);
+      await store.upsertRootIssue(root);
+      await store.upsertDispatchAction(action);
+
+      const result = await executeDispatchAction({
+        store,
+        actionId: action.id,
+        rootIssueId: root.id,
+        runtimeKind: RuntimeKind.CodexCli,
+        runtime: new MockRuntimeAdapter(),
+        provider: new MockProviderAdapter(),
+        workingDirectory: "/repo/vagrant/.worktrees/root-1",
+        now: "2026-05-10T00:00:00.000Z"
+      });
+
+      const savedRoot = await store.getRootIssue(root.id);
+      expect(result.run?.status).toBe("succeeded");
+      expect(savedRoot?.children[0]?.status).toBe("in_review");
+      expect(result.run?.logs).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          stream: "system",
+          body: expect.stringContaining("waiting for review")
+        })
+      ]));
+    });
+  });
+
   it("runs a project orchestration tick across root issues and reports actions, runs, and approvals", async () => {
     await withTempRuntimeDir(async (runtimeDir) => {
       const store = new LocalStore({ runtimeDir });

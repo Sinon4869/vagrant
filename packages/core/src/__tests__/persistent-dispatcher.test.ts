@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockProviderAdapter } from "../adapters.js";
-import { AgentRole, IssueType, RuntimeKind, createProject, createRepositoryConfig } from "../domain.js";
+import { AgentRole, IssueStatus, IssueType, RuntimeKind, createProject, createRepositoryConfig } from "../domain.js";
 import {
   CodexCliRuntimeAdapter,
   FakeProcessRunner,
@@ -65,6 +65,7 @@ describe("persistent dispatcher", () => {
       expect(savedRuns).toHaveLength(1);
       expect(savedRuns[0]?.runtimeKind).toBe(RuntimeKind.CodexCli);
       expect(savedRuns[0]?.status).toBe("succeeded");
+      expect(savedRoot?.children[0]?.status).toBe(IssueStatus.InReview);
       expect(await store.hasDispatchKey(result.dispatchedRuns[0]!.dispatchKey)).toBe(true);
     });
   });
