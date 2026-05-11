@@ -3,15 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CodeOutlined, FilterOutlined, PlayCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
-import { Button, Card, Flex, Form, Select, Space, Table, Tag, Typography } from "antd";
+import { Alert, Button, Card, Flex, Form, Select, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
+import { type RunsFeedback } from "@/lib/run-feedback";
 import { type RunRow, type RunsWorkspaceView } from "@/lib/workspace-store";
 
 const { Text } = Typography;
 
-export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
+export function RunsPageClient({ view, feedback }: { view: RunsWorkspaceView; feedback?: RunsFeedback | null }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [runtimeFilter, setRuntimeFilter] = useState("all");
   const [tickRuntimeKind, setTickRuntimeKind] = useState("mock");
@@ -75,6 +76,14 @@ export function RunsPageClient({ view }: { view: RunsWorkspaceView }) {
         title="Runs Audit"
         description="Dispatch a ready subissue with mock, Codex CLI, or Claude CLI, then inspect the persisted agent run history."
       />
+      {feedback ? (
+        <Alert
+          showIcon
+          type={feedback.type}
+          message={feedback.message}
+          className="run-feedback-alert"
+        />
+      ) : null}
 
       <Card title="Dispatch ready issue" extra={<PlayCircleOutlined />}>
         <Flex gap={24} wrap align="flex-start">

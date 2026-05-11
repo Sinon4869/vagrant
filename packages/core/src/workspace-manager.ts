@@ -26,7 +26,9 @@ export class WorkspaceManager {
     const branchName = `${input.repository.branchNamePrefix}/${input.rootIssueId}`;
     const workingDirectory = join(this.options.worktreesDir, input.rootIssueId);
 
+    await this.ensureRepositoryIsGitWorktree(input.repository);
     await this.fetchRepository(input.repository);
+    await this.ensureBaseBranchAvailable(input.repository);
     if (!(await this.hasWorktree(input.repository.localPath, workingDirectory))) {
       await this.runGit(input.repository.localPath, [
         "worktree",
@@ -46,6 +48,16 @@ export class WorkspaceManager {
     };
   }
 
+  private async ensureRepositoryIsGitWorktree(repository: RepositoryConfig): Promise<void> {
+    const result = await this.runGit(repository.localPath, ["rev-parse", "--is-inside-work-tree"], {
+      throwOnError: false
+    });
+
+    if (result.exitCode !== 0 || result.stdout.trim() !== "true") {
+      throw new Error(`Repository path is not a git repository: ${repository.localPath}`);
+    }
+  }
+
   private async fetchRepository(repository: RepositoryConfig): Promise<void> {
     const result = await this.runGit(repository.localPath, ["fetch", "--all", "--prune"], {
       throwOnError: false
@@ -56,6 +68,20 @@ export class WorkspaceManager {
     }
 
     throw new Error(`git fetch --all --prune failed: ${result.stderr || result.stdout}`);
+  }
+
+  private async ensureBaseBranchAvailable(repository: RepositoryConfig): Promise<void> {
+    const result = await this.runGit(repository.localPath, [
+      "rev-parse",
+      "--verify",
+      `${repository.defaultBaseBranch}^{commit}`
+    ], {
+      throwOnError: false
+    });
+
+    if (result.exitCode !== 0) {
+      throw new Error(`Repository base branch is not available: ${repository.defaultBaseBranch}`);
+    }
   }
 
   private async hasWorktree(repositoryPath: string, workingDirectory: string): Promise<boolean> {

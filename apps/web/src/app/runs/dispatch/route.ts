@@ -7,7 +7,15 @@ import {
   scanReadyDispatchActions
 } from "@vagrant/core/node";
 import { assertRootIssueProject } from "@/lib/route-guards";
-import { createProviderAdapter, createRuntimeAdapter, readRuntimeKindValue } from "@/lib/runtime-adapters";
+import { buildRunsRedirectPath } from "@/lib/run-feedback";
+import {
+  createProviderAdapter,
+  createRuntimeAdapter,
+  getRuntimeBinary,
+  normalizeProcessError,
+  readRuntimeKindValue,
+  validateRuntimeBinary
+} from "@/lib/runtime-adapters";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
 export async function POST(request: NextRequest) {
@@ -34,8 +42,27 @@ export async function POST(request: NextRequest) {
   });
   const startAction = scanResult.actions.find((action) => action.kind === "start_agent_run");
 
-  if (startAction) {
-    await executeDispatchAction({
+  if (!startAction) {
+    return NextResponse.redirect(new URL(buildRunsRedirectPath({
+      projectId,
+      result: "dispatch",
+      status: "idle",
+      message: "No ready agent run found for the selected root issue.",
+      actions: scanResult.actions.length,
+      approvals: scanResult.approvals.length,
+      runs: 0
+    }), request.url), 303);
+  }
+
+  let execution;
+
+  try {
+    await validateRuntimeBinary({
+      runtimeKind,
+      runner,
+      cwd: process.cwd()
+    });
+    execution = await executeDispatchAction({
       store,
       rootIssueId,
       actionId: startAction.id,
@@ -52,9 +79,27 @@ export async function POST(request: NextRequest) {
           worktreesDir: process.env.VAGRANT_WORKTREES_DIR ?? "/tmp/vagrant-worktrees"
         })
     });
+  } catch (error) {
+    return NextResponse.redirect(new URL(buildRunsRedirectPath({
+      projectId,
+      result: "dispatch",
+      status: "failed",
+      message: normalizeProcessError(error, runtimeKind, getRuntimeBinary(runtimeKind) ?? "runtime"),
+      actions: scanResult.actions.length,
+      approvals: scanResult.approvals.length,
+      runs: 0
+    }), request.url), 303);
   }
 
-  return NextResponse.redirect(new URL(`/runs?projectId=${encodeURIComponent(projectId)}`, request.url), 303);
+  return NextResponse.redirect(new URL(buildRunsRedirectPath({
+    projectId,
+    result: "dispatch",
+    status: execution.run?.status === "failed" ? "failed" : "executed",
+    message: execution.run?.summary ?? "Dispatch completed.",
+    actions: scanResult.actions.length,
+    approvals: scanResult.approvals.length,
+    runs: execution.run ? 1 : 0
+  }), request.url), 303);
 }
 
 async function prepareWorkspace({

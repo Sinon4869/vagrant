@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { RuntimeKind } from "@vagrant/core";
 import { NodeProcessRunner, runOrchestrationTick } from "@vagrant/core/node";
+import { buildRunsRedirectPath } from "@/lib/run-feedback";
 import { createProviderAdapter, createRuntimeAdapter, readRuntimeKindValue } from "@/lib/runtime-adapters";
 import { getWorkspaceStore, resolveProjectId } from "@/lib/workspace-store";
 
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     throw new Error("Project orchestration tick currently supports Mock Runtime only. Use selected-root dispatch for Codex CLI or Claude CLI.");
   }
 
-  await runOrchestrationTick({
+  const result = await runOrchestrationTick({
     store,
     projectId,
     triggerEventId: `tick-${projectId}`,
@@ -25,7 +26,17 @@ export async function POST(request: NextRequest) {
     workingDirectory: `/mock/workspaces/${projectId}`
   });
 
-  return NextResponse.redirect(new URL(`/runs?projectId=${encodeURIComponent(projectId)}`, request.url), 303);
+  return NextResponse.redirect(new URL(buildRunsRedirectPath({
+    projectId,
+    result: "tick",
+    status: result.executedRuns.length > 0 ? "executed" : "idle",
+    message: result.executedRuns.length > 0
+      ? `Tick executed ${result.executedRuns.length} run(s).`
+      : "Tick found no ready agent runs.",
+    runs: result.executedRuns.length,
+    actions: result.plannedActions.length,
+    approvals: result.createdApprovals.length
+  }), request.url), 303);
 }
 
 function readOptionalString(formData: FormData, key: string): string | null {

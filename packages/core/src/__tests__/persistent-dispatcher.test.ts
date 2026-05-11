@@ -37,7 +37,7 @@ describe("persistent dispatcher", () => {
         area: "frontend",
         now
       });
-      const runner = new FakeProcessRunner({ exitCode: 0, stdout: "done", stderr: "" });
+      const runner = new FakeProcessRunner({ exitCode: 0, stdout: "true", stderr: "" });
 
       await store.upsertProject(project);
       await store.upsertRepository(repository);
